@@ -83,6 +83,20 @@ export async function closePayments(gameWeekId: string, actor?: Actor) {
   return updated;
 }
 
+/** Cron-driven: the FPL Game Week has kicked off, so live syncing can start. */
+export async function markGameWeekLive(gameWeekId: string) {
+  const gameWeek = await prisma.gameWeek.findUnique({ where: { id: gameWeekId } });
+  if (!gameWeek || gameWeek.status !== "LOCKED") return null;
+  return prisma.gameWeek.update({ where: { id: gameWeekId }, data: { status: "LIVE" } });
+}
+
+/** Cron-driven: FPL has confirmed final scores (bootstrap event.data_checked), ready to finalize. */
+export async function markResultsPending(gameWeekId: string) {
+  const gameWeek = await prisma.gameWeek.findUnique({ where: { id: gameWeekId } });
+  if (!gameWeek || gameWeek.status !== "LIVE") return null;
+  return prisma.gameWeek.update({ where: { id: gameWeekId }, data: { status: "RESULTS_PENDING" } });
+}
+
 export async function cancelGameWeek(gameWeekId: string, reason: string, actor: Actor) {
   const gameWeek = await prisma.gameWeek.findUnique({ where: { id: gameWeekId } });
   if (!gameWeek) throw new Error("Game Week not found");
