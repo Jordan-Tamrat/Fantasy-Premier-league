@@ -1,0 +1,311 @@
+// FPL Private Money League — Phase 1 schema.
+// Money fields are always Decimal(10,2), never Float. See services/prizeEngine.ts
+// for how ties are split and services/lockGameWeek.ts / finalizeResults.ts for
+// how the snapshots below get created and frozen.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum GameWeekStatus {
+  DRAFT
+  OPEN
+  PAYMENT_CLOSED
+  LOCKED
+  LIVE
+  RESULTS_PENDING
+  PRIZES_PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  TELEBIRR
+  CBE
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum PrizePaymentStatus {
+  PENDING
+  PAID
+}
+
+enum SnapshotSource {
+  API
+  MANUAL
+}
+
+model User {
+  id               String     @id @default(cuid())
+  email            String     @unique
+  name             String
+  passwordHash     String
+  role             Role       @default(MEMBER)
+  status           UserStatus @default(ACTIVE)
+  telebirrNumber   String?
+  cbeAccountNumber String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  fplAccount        FPLAccount?
+  payments          Payment[]             @relation("PayerPayments")
+  verifiedPayments  Payment[]             @relation("VerifierPayments")
+  participations    GameWeekParticipant[]
+  fplSnapshots      FPLGameWeekSnapshot[]
+  results           GameWeekResult[]
+  prizePaymentsMade PrizePayment[]        @relation("PrizePaidBy")
+  invitesSent       Invite[]              @relation("InviteSender")
+  auditLogs         AuditLog[]
+
+  accounts Account[]
+  sessions Session[]
+
+  @@index([role])
+}
+
+// --- Auth.js (NextAuth v5) required tables for the Credentials + PrismaAdapter setup ---
+// Account/Session stay effectively unused (no OAuth providers, JWT session strategy)
+// but the adapter's TypeScript types require them to exist.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Invite {
+  id              String       @id @default(cuid())
+  email           String
+  token           String       @unique
+  role            Role         @default(MEMBER)
+  status          InviteStatus @default(PENDING)
+  invitedByUserId String
+  invitedBy       User         @relation("InviteSender", fields: [invitedByUserId], references: [id])
+  expiresAt       DateTime
+  createdAt       DateTime     @default(now())
+  acceptedAt      DateTime?
+
+  @@index([email])
+  @@index([status])
+}
+
+model FPLAccount {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id])
+  fplEntryId     Int       @unique
+  fplManagerName String?
+  fplTeamName    String?
+  linkedAt       DateTime  @default(now())
+  lastSyncedAt   DateTime?
+}
+
+// Singleton row (id is always the literal string "default") holding league-wide
+// defaults the admin can edit in /admin/settings.
+model LeagueSettings {
+  id                                String   @id @default("default")
+  leagueName                        String   @default("Fantasy Money League")
+  currency                          String   @default("ETB")
+  defaultEntryFee                   Decimal  @db.Decimal(10, 2)
+  defaultPaymentDeadlineOffsetHours Int      @default(2)
+  defaultMinParticipants            Int      @default(3)
+  leagueTelebirrNumber              String?
+  leagueCbeAccountNumber            String?
+  leagueAccountName                 String?
+  updatedAt                         DateTime @updatedAt
+}
+
+model GameWeek {
+  id                         String         @id @default(cuid())
+  fplEventId                 Int            @unique
+  status                     GameWeekStatus @default(DRAFT)
+  entryFee                   Decimal        @db.Decimal(10, 2)
+  minParticipants            Int
+  paymentDeadlineOffsetHours Int
+  fplDeadline                DateTime
+  paymentDeadline            DateTime
+  announcement               String?        @db.Text
+  lockedAt                   DateTime?
+  prizeConfigFrozenAt        DateTime?
+  collectedAmountSnapshot    Decimal?       @db.Decimal(10, 2)
+  finalizedAt                DateTime?
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+
+  prizePositions PrizePosition[]
+  payments       Payment[]
+  participants   GameWeekParticipant[]
+  fplSnapshots   FPLGameWeekSnapshot[]
+  results        GameWeekResult[]
+
+  @@index([status])
+}
+
+model PrizePosition {
+  id         String   @id @default(cuid())
+  gameWeekId String
+  gameWeek   GameWeek @relation(fields: [gameWeekId], references: [id])
+  position   Int
+  amount     Decimal  @db.Decimal(10, 2)
+
+  @@unique([gameWeekId, position])
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  gameWeekId       String
+  gameWeek         GameWeek      @relation(fields: [gameWeekId], references: [id])
+  userId           String
+  user             User          @relation("PayerPayments", fields: [userId], references: [id])
+  amount           Decimal       @db.Decimal(10, 2)
+  method           PaymentMethod
+  screenshotPath   String
+  status           PaymentStatus @default(PENDING)
+  submittedAt      DateTime      @default(now())
+  verifiedAt       DateTime?
+  verifiedByUserId String?
+  verifiedBy       User?         @relation("VerifierPayments", fields: [verifiedByUserId], references: [id])
+  rejectionReason  String?
+
+  @@unique([gameWeekId, userId])
+  @@index([gameWeekId, status])
+}
+
+// Immutable snapshot created once, at lockGameWeek() time. Kept separate from
+// Payment (which stays a mutable admin-workflow record) so a later change to a
+// payment can never retroactively change who was eligible for a past Game Week.
+model GameWeekParticipant {
+  id                   String   @id @default(cuid())
+  gameWeekId           String
+  gameWeek             GameWeek @relation(fields: [gameWeekId], references: [id])
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id])
+  paymentId            String
+  entryFeePaidSnapshot Decimal  @db.Decimal(10, 2)
+  snapshotAt           DateTime @default(now())
+
+  @@unique([gameWeekId, userId])
+}
+
+model FPLGameWeekSnapshot {
+  id               String         @id @default(cuid())
+  gameWeekId       String
+  gameWeek         GameWeek       @relation(fields: [gameWeekId], references: [id])
+  userId           String
+  user             User           @relation(fields: [userId], references: [id])
+  fplEntryId       Int
+  points           Int?
+  source           SnapshotSource @default(API)
+  correctionReason String?
+  rawPayload       Json?
+  syncedAt         DateTime       @default(now())
+
+  @@unique([gameWeekId, userId])
+}
+
+// Frozen award for one participant, written once by finalizeResults().
+model GameWeekResult {
+  id                     String   @id @default(cuid())
+  gameWeekId             String
+  gameWeek               GameWeek @relation(fields: [gameWeekId], references: [id])
+  userId                 String
+  user                   User     @relation(fields: [userId], references: [id])
+  points                 Int
+  rank                   Int
+  tieGroupSize           Int
+  prizePositionsConsumed Int[]
+  prizeAwarded           Decimal  @db.Decimal(10, 2)
+  roundingAdjustment     Decimal  @db.Decimal(10, 2)
+  finalizedAt            DateTime @default(now())
+
+  prizePayment PrizePayment?
+
+  @@unique([gameWeekId, userId])
+  @@index([gameWeekId, rank])
+}
+
+model PrizePayment {
+  id               String             @id @default(cuid())
+  gameWeekResultId String             @unique
+  gameWeekResult   GameWeekResult     @relation(fields: [gameWeekResultId], references: [id])
+  amount           Decimal            @db.Decimal(10, 2)
+  status           PrizePaymentStatus @default(PENDING)
+  method           PaymentMethod?
+  paidAt           DateTime?
+  paidByUserId     String?
+  paidBy           User?              @relation("PrizePaidBy", fields: [paidByUserId], references: [id])
+  proofPath        String?
+  referenceNumber  String?
+  notes            String?
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actor       User?    @relation(fields: [actorUserId], references: [id])
+  actorLabel  String?
+  action      String
+  entityType  String
+  entityId    String
+  oldValue    Json?
+  newValue    Json?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
