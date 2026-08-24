@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/rank-badge";
+import { Avatar, avatarUrl } from "@/components/rank-badge";
 import { MemberRowActions } from "./member-row-actions";
 
 export default async function AdminMembersPage() {
@@ -15,7 +15,7 @@ export default async function AdminMembersPage() {
           <Card key={member.id}>
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3.5">
               <div className="flex items-center gap-3">
-                <Avatar name={member.name} />
+                <Avatar name={member.name} imageUrl={avatarUrl(member)} />
                 <div>
                   <p className="font-semibold">
                     {member.name}{" "}

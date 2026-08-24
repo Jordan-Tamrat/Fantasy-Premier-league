@@ -11,25 +11,35 @@ const MESSAGE_PAGE_SIZE = 50;
 // fetches a clean recent window.
 const POLL_BATCH_LIMIT = 100;
 
+/**
+ * One page of history, newest page first. Pass `before` (the createdAt of the
+ * oldest message you already hold) to walk backwards.
+ *
+ * Fetches one row beyond the page size purely to learn whether more history
+ * exists, which avoids a second COUNT query.
+ */
 export async function listMessages(options?: { before?: Date }) {
-  const messages = await prisma.chatMessage.findMany({
+  const rows = await prisma.chatMessage.findMany({
     where: options?.before ? { createdAt: { lt: options.before } } : undefined,
     include: {
-      sender: { select: { id: true, name: true, role: true } },
+      sender: { select: { id: true, name: true, role: true, profileImagePath: true } },
       replyTo: { select: { id: true, content: true, sender: { select: { name: true } } } },
     },
     orderBy: { createdAt: "desc" },
-    take: MESSAGE_PAGE_SIZE,
+    take: MESSAGE_PAGE_SIZE + 1,
   });
+
+  const hasMore = rows.length > MESSAGE_PAGE_SIZE;
+  const page = hasMore ? rows.slice(0, MESSAGE_PAGE_SIZE) : rows;
   // Queried newest-first for the LIMIT, returned oldest-first for rendering.
-  return messages.reverse();
+  return { messages: page.reverse(), hasMore };
 }
 
 export async function listMessagesSince(since: Date) {
   return prisma.chatMessage.findMany({
     where: { createdAt: { gt: since } },
     include: {
-      sender: { select: { id: true, name: true, role: true } },
+      sender: { select: { id: true, name: true, role: true, profileImagePath: true } },
       replyTo: { select: { id: true, content: true, sender: { select: { name: true } } } },
     },
     orderBy: { createdAt: "asc" },

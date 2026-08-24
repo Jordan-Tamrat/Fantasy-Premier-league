@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { updateProfileSchema } from "@/lib/validations/profile.schema";
 import { linkFplAccountSchema } from "@/lib/validations/fplAccount.schema";
 import { linkFplAccount, unlinkFplAccount } from "@/services/fplSyncService";
+import { updateProfilePicture } from "@/services/profileService";
 
 export async function updateProfileAction(_prevState: string | undefined, formData: FormData) {
   const user = await requireUser();
@@ -25,6 +26,21 @@ export async function updateProfileAction(_prevState: string | undefined, formDa
 
   revalidatePath("/profile");
   return "Saved";
+}
+
+export async function updateProfilePictureAction(_prevState: string | undefined, formData: FormData) {
+  const user = await requireUser();
+  const image = formData.get("image");
+  if (!(image instanceof File) || image.size === 0) return "Choose an image first";
+
+  try {
+    await updateProfilePicture(user.id, image);
+  } catch (error) {
+    return error instanceof Error ? error.message : "Could not update your picture";
+  }
+
+  revalidatePath("/profile");
+  revalidatePath("/leaderboard");
 }
 
 export async function linkFplAccountAction(_prevState: string | undefined, formData: FormData) {

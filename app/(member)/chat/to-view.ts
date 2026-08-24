@@ -1,3 +1,4 @@
+import { avatarUrl } from "@/components/rank-badge";
 import type { ChatMessageView } from "./message-view";
 
 interface MessageRecord {
@@ -9,7 +10,7 @@ interface MessageRecord {
   editedAt: Date | null;
   deletedAt: Date | null;
   createdAt: Date;
-  sender: { id: string; name: string; role: string } | null;
+  sender: { id: string; name: string; role: string; profileImagePath: string | null } | null;
   replyTo?: { id: string; content: string; sender: { name: string } | null } | null;
 }
 
@@ -32,6 +33,7 @@ export function toChatMessageView(message: MessageRecord): ChatMessageView {
     createdAt: message.createdAt.toISOString(),
     senderId: message.sender?.id ?? null,
     senderName: message.sender?.name ?? null,
+    senderAvatarUrl: message.sender ? avatarUrl(message.sender) : null,
     replyToName: message.replyTo?.sender?.name ?? null,
     replyToContent: message.replyTo?.content ?? null,
   };

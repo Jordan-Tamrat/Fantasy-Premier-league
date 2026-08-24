@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GameWeekHero } from "@/components/gw-hero";
 import { StatChip } from "@/components/stat-chip";
+import { avatarUrl } from "@/components/rank-badge";
 import { Users, Coins, CalendarClock, Hash } from "lucide-react";
 import { LifecycleActions } from "./lifecycle-actions";
 import { PrizePositionsForm } from "./prize-positions-form";
@@ -55,6 +56,7 @@ export default async function AdminGameWeekDetailPage({ params }: { params: Prom
   const finalResultRows: FinalResultRow[] = results.map((r) => ({
     id: r.id,
     userName: r.user.name,
+    avatarUrl: avatarUrl(r.user),
     rank: r.rank,
     points: r.points,
     prizeAwarded: r.prizeAwarded.toString(),

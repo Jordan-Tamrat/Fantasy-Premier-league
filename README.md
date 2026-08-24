@@ -55,7 +55,7 @@ You need a free project at [supabase.com](https://supabase.com) for Postgres + f
 
 1. Create the project.
 2. **Database → Connection string**: copy both the pooled connection (port 6543, `?pgbouncer=true`) and the direct connection (port 5432).
-3. **Storage**: create three **private** buckets: `payment-proofs`, `prize-payment-proofs`, and `chat-attachments`.
+3. **Storage**: create four **private** buckets: `payment-proofs`, `prize-payment-proofs`, `chat-attachments`, and `profile-images`.
 4. **Settings → API**: copy the project URL, anon key, and service role key.
 
 ### 3. Configure environment variables
@@ -107,7 +107,7 @@ npm run db:seed      # prisma db seed
 
 ## Known limitations / next steps
 
-- **No automated tests yet for `lockGameWeek`/`finalizeResults`** — these need a real Postgres instance to test transaction behavior meaningfully; the prize engine itself (the highest-risk part) has full coverage. Worth adding once a test database is available.
+- **`lockGameWeek`/`finalizeResults` tests run against the real dev database**, not a mock — `npm run test` will create and delete real rows (a few test users, one Game Week) while it runs. Every test cleans up fully in `afterEach`, including the system chat messages and notifications those functions fan out to every member (see `services/gameWeekTestFixtures.ts`). Safe to run repeatedly, but don't point `DATABASE_URL` at production when running tests.
 - **Payment proof review UX is basic** — signed URLs are generated server-side per page load rather than through a dedicated API route; fine at this scale, but note if screenshot review traffic ever grows.
 - **No email delivery** — invite links are shown to the admin to share manually (WhatsApp, SMS, etc.) rather than emailed. Notifications are in-app only.
 - **Chat updates by polling, not websockets** — the client asks for new messages every 4 seconds while a conversation is active, backing off to 20 seconds once it's been quiet for two minutes, and skipping the request entirely while the tab is hidden. For ~20 members this is fine and avoids bridging NextAuth sessions into Supabase Realtime's row-level-security model (a second auth system to keep in sync). If concurrent viewers ever reach the high tens, Supabase Realtime is the upgrade path.

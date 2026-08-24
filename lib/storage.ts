@@ -20,6 +20,7 @@ export const STORAGE_BUCKETS = {
   paymentProofs: "payment-proofs",
   prizePaymentProofs: "prize-payment-proofs",
   chatAttachments: "chat-attachments",
+  profileImages: "profile-images",
 } as const;
 
 export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS];

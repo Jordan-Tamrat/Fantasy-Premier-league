@@ -1,7 +1,7 @@
 import { listAllDisputes } from "@/services/disputeService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/rank-badge";
+import { Avatar, avatarUrl } from "@/components/rank-badge";
 import { RespondForm } from "./respond-form";
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -29,7 +29,7 @@ export default async function AdminDisputesPage() {
               <CardContent className="space-y-2 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-3">
-                    <Avatar name={d.author.name} />
+                    <Avatar name={d.author.name} imageUrl={avatarUrl(d.author)} />
                     <div className="min-w-0">
                       <p className="font-bold">{d.title}</p>
                       <p className="text-xs text-muted-foreground">

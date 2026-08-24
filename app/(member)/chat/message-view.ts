@@ -10,6 +10,7 @@ export interface ChatMessageView {
   createdAt: string;
   senderId: string | null;
   senderName: string | null;
+  senderAvatarUrl: string | null;
   replyToName: string | null;
   replyToContent: string | null;
 }

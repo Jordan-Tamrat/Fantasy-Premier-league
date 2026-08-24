@@ -82,6 +82,7 @@ function ParticipantScoreRowItem({
 export interface FinalResultRow {
   id: string;
   userName: string;
+  avatarUrl: string | null;
   rank: number;
   points: number;
   prizeAwarded: string;
@@ -95,7 +96,7 @@ export function FinalResultsSection({ gameWeekId, results }: { gameWeekId: strin
         <div key={r.id} className="rounded-xl border p-3 text-sm">
           <div className="flex items-center gap-3">
             <RankBadge rank={r.rank} />
-            <Avatar name={r.userName} />
+            <Avatar name={r.userName} imageUrl={r.avatarUrl} />
             <span className="flex-1 truncate font-semibold">{r.userName}</span>
             <span className="text-muted-foreground">{r.points} pts</span>
             {r.prizeAwarded !== "0" && (

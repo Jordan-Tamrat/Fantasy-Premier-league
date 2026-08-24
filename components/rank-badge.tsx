@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const RANK_STYLES: Record<number, string> = {
@@ -19,7 +20,36 @@ export function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-export function Avatar({ name }: { name: string }) {
+/** The signed-URL route path for a user's avatar, or null if they haven't set one. */
+export function avatarUrl(user: { id: string; profileImagePath: string | null }): string | null {
+  return user.profileImagePath ? `/api/attachments/avatar/${user.id}` : null;
+}
+
+export function Avatar({
+  name,
+  imageUrl,
+  size = "md",
+}: {
+  name: string;
+  imageUrl?: string | null;
+  size?: "sm" | "md";
+}) {
+  const dimension = size === "sm" ? 24 : 32;
+  const sizeClass = size === "sm" ? "size-6" : "size-8";
+
+  if (imageUrl) {
+    return (
+      <Image
+        src={imageUrl}
+        alt={name}
+        width={dimension}
+        height={dimension}
+        unoptimized
+        className={cn(sizeClass, "shrink-0 rounded-full object-cover")}
+      />
+    );
+  }
+
   const initials = name
     .trim()
     .split(/\s+/)
@@ -28,7 +58,12 @@ export function Avatar({ name }: { name: string }) {
     .join("")
     .toUpperCase();
   return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
+    <span
+      className={cn(
+        sizeClass,
+        "flex shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground",
+      )}
+    >
       {initials}
     </span>
   );

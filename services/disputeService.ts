@@ -12,7 +12,10 @@ export async function listDisputesForUser(userId: string) {
 
 export async function listAllDisputes() {
   return prisma.dispute.findMany({
-    include: { author: { select: { name: true } }, respondedBy: { select: { name: true } } },
+    include: {
+      author: { select: { id: true, name: true, profileImagePath: true } },
+      respondedBy: { select: { name: true } },
+    },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
 }

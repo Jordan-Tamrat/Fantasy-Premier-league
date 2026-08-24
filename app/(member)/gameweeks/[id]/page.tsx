@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { GameWeekHero } from "@/components/gw-hero";
 import { Countdown } from "@/components/countdown";
 import { PrizePills } from "@/components/prize-pills";
-import { RankBadge, Avatar } from "@/components/rank-badge";
+import { RankBadge, Avatar, avatarUrl } from "@/components/rank-badge";
 import { PaymentForm } from "./payment-form";
 
 export default async function GameWeekDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -116,7 +116,7 @@ export default async function GameWeekDetailPage({ params }: { params: Promise<{
                   {results.map((r) => (
                     <div key={r.id} className="flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm">
                       <RankBadge rank={r.rank} />
-                      <Avatar name={r.user.name} />
+                      <Avatar name={r.user.name} imageUrl={avatarUrl(r.user)} />
                       <span className="flex-1 truncate font-semibold">{r.user.name}</span>
                       <span className="text-muted-foreground">{r.points} pts</span>
                       {r.prizeAwarded.greaterThan(0) && (

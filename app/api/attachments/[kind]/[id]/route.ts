@@ -36,6 +36,14 @@ async function resolvePrize(id: string, userId: string, isAdmin: boolean): Promi
   return { bucket: STORAGE_BUCKETS.prizePaymentProofs, path: prizePayment.proofPath };
 }
 
+async function resolveAvatar(userId: string): Promise<Resolved> {
+  // `id` here is the target user's id, not the viewer's — profile pictures
+  // are visible to any signed-in member, same as a name is.
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { profileImagePath: true } });
+  if (!user?.profileImagePath) return null;
+  return { bucket: STORAGE_BUCKETS.profileImages, path: user.profileImagePath };
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ kind: string; id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -47,6 +55,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ kin
   if (kind === "chat") resolved = await resolveChat(id);
   else if (kind === "payment") resolved = await resolvePayment(id, session.user.id, isAdmin);
   else if (kind === "prize") resolved = await resolvePrize(id, session.user.id, isAdmin);
+  else if (kind === "avatar") resolved = await resolveAvatar(id);
   else return NextResponse.json({ error: "Unknown attachment type" }, { status: 400 });
 
   // Same response whether it's missing or forbidden, so this can't be used to

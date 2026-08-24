@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { sendMessageSchema } from "@/lib/validations/phase2.schema";
-import { sendMessage, deleteMessage, setMessagePinned, listMessagesSince } from "@/services/chatService";
+import { sendMessage, deleteMessage, setMessagePinned, listMessagesSince, listMessages } from "@/services/chatService";
 import { toChatMessageView } from "./to-view";
 import type { ChatMessageView } from "./message-view";
 
@@ -49,6 +49,19 @@ export async function togglePinAction(messageId: string, pinned: boolean) {
 /** Polled by the chat client to pick up messages sent by other members. */
 export async function fetchNewMessagesAction(sinceIso: string): Promise<ChatMessageView[]> {
   await requireUser();
-  const messages = await listMessagesSince(new Date(sinceIso));
+  const since = new Date(sinceIso);
+  if (Number.isNaN(since.getTime())) return [];
+  const messages = await listMessagesSince(since);
   return messages.map(toChatMessageView);
+}
+
+/** Walks backwards through history for the "Load older messages" button. */
+export async function fetchOlderMessagesAction(
+  beforeIso: string,
+): Promise<{ messages: ChatMessageView[]; hasMore: boolean }> {
+  await requireUser();
+  const before = new Date(beforeIso);
+  if (Number.isNaN(before.getTime())) return { messages: [], hasMore: false };
+  const { messages, hasMore } = await listMessages({ before });
+  return { messages: messages.map(toChatMessageView), hasMore };
 }

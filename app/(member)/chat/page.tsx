@@ -5,8 +5,14 @@ import { ChatRoom } from "./chat-room";
 
 export default async function ChatPage() {
   const user = await requireUser();
-  const messages = await listMessages();
-  const views = messages.map(toChatMessageView);
+  const { messages, hasMore } = await listMessages();
 
-  return <ChatRoom initialMessages={views} currentUserId={user.id} isAdmin={user.role === "ADMIN"} />;
+  return (
+    <ChatRoom
+      initialMessages={messages.map(toChatMessageView)}
+      initialHasMore={hasMore}
+      currentUserId={user.id}
+      isAdmin={user.role === "ADMIN"}
+    />
+  );
 }

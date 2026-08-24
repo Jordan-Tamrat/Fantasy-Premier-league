@@ -15,6 +15,7 @@ import {
   Vote,
   Flag,
   Megaphone,
+  Medal,
 } from "lucide-react";
 
 export interface NavItem {
@@ -29,6 +30,7 @@ export interface NavItem {
 export const MEMBER_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/gameweeks", label: "Game Weeks", icon: Trophy },
+  { href: "/leaderboard", label: "Leaderboard", icon: Medal },
   { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/rules", label: "Rules", icon: ScrollText },

@@ -4,8 +4,15 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import Image from "next/image";
 import { ImagePlus, Send, Pin, Trash2, CornerUpLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/rank-badge";
 import { cn } from "@/lib/utils";
-import { sendMessageAction, deleteMessageAction, togglePinAction, fetchNewMessagesAction } from "./actions";
+import {
+  sendMessageAction,
+  deleteMessageAction,
+  togglePinAction,
+  fetchNewMessagesAction,
+  fetchOlderMessagesAction,
+} from "./actions";
 import type { ChatMessageView } from "./message-view";
 
 // Live updates by polling rather than websockets: for a private league of ~20
@@ -21,20 +28,25 @@ const ACTIVITY_WINDOW_MS = 2 * 60 * 1000;
 
 export function ChatRoom({
   initialMessages,
+  initialHasMore,
   currentUserId,
   isAdmin,
 }: {
   initialMessages: ChatMessageView[];
+  initialHasMore: boolean;
   currentUserId: string;
   isAdmin: boolean;
 }) {
   const [messages, setMessages] = useState(initialMessages);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessageView | null>(null);
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
   const [error, formAction, isPending] = useActionState(sendMessageAction, undefined);
   const [, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   // Mirrored into a ref so the polling interval can read the newest message
   // without being torn down and recreated on every render.
   const messagesRef = useRef(messages);
@@ -84,9 +96,44 @@ export function ChatRoom({
     };
   }, []);
 
+  // Keyed on the *last* message rather than message count, so prepending older
+  // history doesn't yank the view down to the bottom. First run jumps instantly
+  // (landing at the latest message); later ones animate.
+  const lastMessageId = messages[messages.length - 1]?.id;
+  const hasAutoScrolledRef = useRef(false);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+    if (!lastMessageId) return;
+    bottomRef.current?.scrollIntoView({ behavior: hasAutoScrolledRef.current ? "smooth" : "auto" });
+    hasAutoScrolledRef.current = true;
+  }, [lastMessageId]);
+
+  const loadOlder = async () => {
+    const container = scrollRef.current;
+    const oldest = messages[0];
+    if (!oldest || isLoadingOlder) return;
+
+    setIsLoadingOlder(true);
+    const heightBefore = container?.scrollHeight ?? 0;
+    try {
+      const older = await fetchOlderMessagesAction(oldest.createdAt);
+      setMessages((prev) => {
+        const known = new Set(prev.map((m) => m.id));
+        return [...older.messages.filter((m) => !known.has(m.id)), ...prev];
+      });
+      setHasMore(older.hasMore);
+      // Prepending grows the scroll area upwards, which would otherwise shift
+      // whatever the reader was looking at. Nudge scrollTop by exactly the
+      // height that was added so the view appears to stay put.
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop += el.scrollHeight - heightBefore;
+      });
+    } catch {
+      // Leave the button in place so it can simply be tried again.
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  };
 
   // Clear the composer as soon as the message is handed off, rather than
   // reacting to isPending in an effect (which causes cascading renders).
@@ -118,7 +165,17 @@ export function ChatRoom({
         </div>
       )}
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        {hasMore && (
+          <div className="flex justify-center pb-1">
+            <Button variant="outline" size="sm" onClick={loadOlder} disabled={isLoadingOlder}>
+              {isLoadingOlder ? "Loading…" : "Load older messages"}
+            </Button>
+          </div>
+        )}
+        {!hasMore && messages.length > 0 && (
+          <p className="pb-1 text-center text-xs text-muted-foreground">Start of the conversation</p>
+        )}
         {messages.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">No messages yet. Say hello 👋</p>
         )}
@@ -220,56 +277,59 @@ function MessageBubble({
   }
 
   return (
-    <div className={cn("group flex flex-col gap-1", isOwn ? "items-end" : "items-start")}>
-      {!isOwn && <p className="px-1 text-xs font-semibold text-muted-foreground">{message.senderName}</p>}
-      <div
-        className={cn(
-          "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm",
-          isOwn ? "bg-primary text-primary-foreground" : "bg-card border",
-        )}
-      >
-        {message.replyToContent && (
-          <p
-            className={cn(
-              "mb-1.5 border-l-2 pl-2 text-xs opacity-70",
-              isOwn ? "border-primary-foreground/40" : "border-border",
-            )}
-          >
-            <span className="font-semibold">{message.replyToName}</span>: {message.replyToContent}
+    <div className={cn("group flex items-end gap-2", isOwn ? "flex-row-reverse" : "flex-row")}>
+      {!isOwn && <Avatar name={message.senderName ?? "?"} imageUrl={message.senderAvatarUrl} size="sm" />}
+      <div className={cn("flex max-w-[80%] flex-col gap-1", isOwn ? "items-end" : "items-start")}>
+        {!isOwn && <p className="px-1 text-xs font-semibold text-muted-foreground">{message.senderName}</p>}
+        <div
+          className={cn(
+            "rounded-2xl px-3.5 py-2 text-sm",
+            isOwn ? "bg-primary text-primary-foreground" : "bg-card border",
+          )}
+        >
+          {message.replyToContent && (
+            <p
+              className={cn(
+                "mb-1.5 border-l-2 pl-2 text-xs opacity-70",
+                isOwn ? "border-primary-foreground/40" : "border-border",
+              )}
+            >
+              <span className="font-semibold">{message.replyToName}</span>: {message.replyToContent}
+            </p>
+          )}
+          {message.attachmentUrl && (
+            <a href={message.attachmentUrl} target="_blank" rel="noreferrer" className="mb-1.5 block">
+              <Image
+                src={message.attachmentUrl}
+                alt="Attachment"
+                width={320}
+                height={240}
+                unoptimized
+                className="max-h-64 w-auto rounded-lg object-contain"
+              />
+            </a>
+          )}
+          {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+          <p className={cn("mt-0.5 text-[10px]", isOwn ? "text-primary-foreground/60" : "text-muted-foreground")}>
+            {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {message.isEdited && " · edited"}
           </p>
-        )}
-        {message.attachmentUrl && (
-          <a href={message.attachmentUrl} target="_blank" rel="noreferrer" className="mb-1.5 block">
-            <Image
-              src={message.attachmentUrl}
-              alt="Attachment"
-              width={320}
-              height={240}
-              unoptimized
-              className="max-h-64 w-auto rounded-lg object-contain"
-            />
-          </a>
-        )}
-        {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
-        <p className={cn("mt-0.5 text-[10px]", isOwn ? "text-primary-foreground/60" : "text-muted-foreground")}>
-          {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          {message.isEdited && " · edited"}
-        </p>
-      </div>
-      <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        <IconAction onClick={onReply} label="Reply">
-          <CornerUpLeft className="size-3" />
-        </IconAction>
-        {isAdmin && (
-          <IconAction onClick={onTogglePin} label={message.isPinned ? "Unpin" : "Pin"}>
-            <Pin className="size-3" />
+        </div>
+        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <IconAction onClick={onReply} label="Reply">
+            <CornerUpLeft className="size-3" />
           </IconAction>
-        )}
-        {(isOwn || isAdmin) && (
-          <IconAction onClick={onDelete} label="Delete">
-            <Trash2 className="size-3" />
-          </IconAction>
-        )}
+          {isAdmin && (
+            <IconAction onClick={onTogglePin} label={message.isPinned ? "Unpin" : "Pin"}>
+              <Pin className="size-3" />
+            </IconAction>
+          )}
+          {(isOwn || isAdmin) && (
+            <IconAction onClick={onDelete} label="Delete">
+              <Trash2 className="size-3" />
+            </IconAction>
+          )}
+        </div>
       </div>
     </div>
   );
