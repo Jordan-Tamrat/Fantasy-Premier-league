@@ -84,48 +84,12 @@ model User {
   invitesSent       Invite[]              @relation("InviteSender")
   auditLogs         AuditLog[]
 
-  accounts Account[]
-  sessions Session[]
-
   @@index([role])
 }
 
-// --- Auth.js (NextAuth v5) required tables for the Credentials + PrismaAdapter setup ---
-// Account/Session stay effectively unused (no OAuth providers, JWT session strategy)
-// but the adapter's TypeScript types require them to exist.
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
+// No Account/Session/VerificationToken tables: there are no OAuth providers
+// and sessions are JWTs, so Auth.js's database adapter isn't needed here —
+// login is just a Credentials check against User.passwordHash.
 
 model Invite {
   id              String       @id @default(cuid())
