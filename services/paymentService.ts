@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { buildProofPath, uploadProofImage, STORAGE_BUCKETS } from "@/lib/storage";
 import { writeAuditLog } from "@/services/auditService";
+import { notifyUsers } from "@/services/notificationService";
 
 interface SubmitPaymentInput {
   gameWeekId: string;
@@ -86,6 +87,13 @@ export async function verifyPayment(paymentId: string, actor: Actor) {
       newValue: { status: "VERIFIED" },
     });
 
+    await notifyUsers(tx, [payment.userId], {
+      type: "PAYMENT_VERIFIED",
+      title: `Payment verified for Game Week ${payment.gameWeek.fplEventId}`,
+      body: "You're in — good luck!",
+      href: `/gameweeks/${payment.gameWeekId}`,
+    });
+
     return updated;
   });
 }
@@ -116,6 +124,13 @@ export async function rejectPayment(paymentId: string, reason: string, actor: Ac
       oldValue: { status: payment.status },
       newValue: { status: "REJECTED" },
       reason,
+    });
+
+    await notifyUsers(tx, [payment.userId], {
+      type: "PAYMENT_REJECTED",
+      title: `Payment rejected for Game Week ${payment.gameWeek.fplEventId}`,
+      body: reason,
+      href: `/gameweeks/${payment.gameWeekId}`,
     });
 
     return updated;

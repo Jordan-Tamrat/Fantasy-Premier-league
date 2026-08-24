@@ -1,7 +1,9 @@
-import { Coins, Users, Wallet, LinkIcon, CheckCircle2, Clock, XCircle } from "lucide-react";
+import Link from "next/link";
+import { Coins, Users, Wallet, LinkIcon, CheckCircle2, Clock, XCircle, Megaphone } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
+import { getLatestAnnouncement } from "@/services/announcementService";
 import { ButtonLink } from "@/components/button-link";
 import { Card, CardContent } from "@/components/ui/card";
 import { GameWeekHero } from "@/components/gw-hero";
@@ -26,9 +28,12 @@ export default async function DashboardPage() {
       ])
     : [null, null];
 
-  const participantCount = currentGameWeek
-    ? await prisma.payment.count({ where: { gameWeekId: currentGameWeek.id, status: "VERIFIED" } })
-    : 0;
+  const [participantCount, latestAnnouncement] = await Promise.all([
+    currentGameWeek
+      ? prisma.payment.count({ where: { gameWeekId: currentGameWeek.id, status: "VERIFIED" } })
+      : Promise.resolve(0),
+    getLatestAnnouncement(),
+  ]);
 
   const firstName = user.name?.split(" ")[0] ?? "there";
 
@@ -66,6 +71,20 @@ export default async function DashboardPage() {
         <ButtonLink href={`/gameweeks/${currentGameWeek.id}`} size="lg" className="w-full font-bold">
           View Game Week
         </ButtonLink>
+
+        {latestAnnouncement && (
+          <Link href="/announcements">
+            <Card className="transition-colors hover:border-primary/40">
+              <CardContent className="flex items-start gap-2.5 py-4">
+                <Megaphone className="mt-0.5 size-4 shrink-0 text-primary" />
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{latestAnnouncement.title}</p>
+                  <p className="line-clamp-2 text-sm text-muted-foreground">{latestAnnouncement.body}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
       </div>
     </div>
   );

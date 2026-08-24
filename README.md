@@ -2,7 +2,9 @@
 
 A private Fantasy Premier League money-competition platform for a small group of friends. Replaces a Telegram-based workflow (payments, verification, winner calculation, payouts) with one app.
 
-This is **phase 1**: the core money-league loop — invite-only accounts, Game Week lifecycle, payment verification, the prize/tie-splitting engine, FPL score syncing, transparency/history, and admin tooling. Chat, rule proposals/voting, disputes, and in-app notifications are a later phase; the schema doesn't preclude adding them.
+**Phase 1** built the money loop: invite-only accounts, Game Week lifecycle, payment verification, the prize/tie-splitting engine, FPL score syncing, transparency/history, and admin tooling.
+
+**Phase 2** replaced the rest of Telegram: a league chat (text, image attachments, replies, pinned and system messages), announcements, in-app notifications, database-backed rules, rule proposals with one-member-one-vote, and a dispute system.
 
 ## How the money math works
 
@@ -20,17 +22,17 @@ This is a small, self-run project (~20-25 friends, one admin) — the architectu
 
 ```
 prisma/schema.prisma      Database schema
-prisma/seed.ts            Demo data (admin + 8 members + one completed Game Week with a tie)
+prisma/seed.ts            Demo data (admin + 8 members, a completed Game Week with a tie, rules, a live vote, chat)
 lib/prisma.ts             Prisma client (pg driver adapter, pooled connection)
 lib/auth.ts               Auth.js config + requireUser()/requireAdmin() guards
 lib/money.ts              Decimal/cents helpers (decimal.js — deliberately not Prisma's re-export, see below)
 lib/storage.ts            Supabase Storage: proof upload + signed URLs
 lib/fpl/                  FPLService — the only code that knows FPL's API endpoints
 lib/validations/          Zod schemas
-services/                 Business logic (prize engine, lock/finalize, payments, invites, audit log, ...)
+services/                 Business logic (prize engine, lock/finalize, payments, chat, proposals, ...)
 app/(auth)/               /login, /invite/[token] — public
-app/(member)/             /dashboard, /gameweeks, /history, /profile — any signed-in user
-app/(admin)/admin/        Game Week + member + settings management — admin only
+app/(member)/             /dashboard, /gameweeks, /chat, /rules, /proposals, /disputes, ... — signed-in
+app/(admin)/admin/        Game Weeks, members, announcements, rules, disputes, settings — admin only
 app/api/cron/             Scheduled jobs, protected by CRON_SECRET (not user sessions)
 ```
 
@@ -50,7 +52,7 @@ You need a free project at [supabase.com](https://supabase.com) for Postgres + f
 
 1. Create the project.
 2. **Database → Connection string**: copy both the pooled connection (port 6543, `?pgbouncer=true`) and the direct connection (port 5432).
-3. **Storage**: create two **private** buckets: `payment-proofs` and `prize-payment-proofs`.
+3. **Storage**: create three **private** buckets: `payment-proofs`, `prize-payment-proofs`, and `chat-attachments`.
 4. **Settings → API**: copy the project URL, anon key, and service role key.
 
 ### 3. Configure environment variables
@@ -104,6 +106,7 @@ npm run db:seed      # prisma db seed
 
 - **No automated tests yet for `lockGameWeek`/`finalizeResults`** — these need a real Postgres instance to test transaction behavior meaningfully; the prize engine itself (the highest-risk part) has full coverage. Worth adding once a test database is available.
 - **Payment proof review UX is basic** — signed URLs are generated server-side per page load rather than through a dedicated API route; fine at this scale, but note if screenshot review traffic ever grows.
-- **No email delivery** — invite links are shown to the admin to share manually (Telegram, WhatsApp, etc.) rather than emailed.
-- **Chat, rule proposals/voting, disputes, and in-app notifications are not built** — this is phase 1 by design (see top of this file). The schema and audit log are structured so they can be added without reworking the money-handling core.
+- **No email delivery** — invite links are shown to the admin to share manually (WhatsApp, SMS, etc.) rather than emailed. Notifications are in-app only.
+- **Chat updates by polling, not websockets** — the chat client asks for new messages every 4 seconds while the tab is visible. For ~20 members this is fine and avoids bridging NextAuth sessions into Supabase Realtime's row-level-security model. If the league ever grows a lot, that's the thing to revisit.
+- **Chat has no reactions, typing indicators, or presence** — deliberately scoped to what the league actually needs (send, reply, attach an image, pin, delete).
 - **`npm audit` reports a high-severity advisory in `deepmerge-ts`**, a transitive dependency of Prisma's own CLI config loader (not reachable from application code — it only processes `prisma.config.ts`, which we author). No fix is available yet without downgrading Prisma or using an unstable release candidate; left as-is and worth revisiting when Prisma patches it.

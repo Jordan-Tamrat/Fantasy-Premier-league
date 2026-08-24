@@ -10,6 +10,11 @@ import {
   RefreshCw,
   ClipboardList,
   Settings,
+  MessageCircle,
+  ScrollText,
+  Vote,
+  Flag,
+  Megaphone,
 } from "lucide-react";
 
 export interface NavItem {
@@ -24,11 +29,23 @@ export interface NavItem {
 export const MEMBER_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/gameweeks", label: "Game Weeks", icon: Trophy },
+  { href: "/chat", label: "Chat", icon: MessageCircle },
+  { href: "/announcements", label: "Announcements", icon: Megaphone },
+  { href: "/rules", label: "Rules", icon: ScrollText },
+  { href: "/proposals", label: "Proposals", icon: Vote },
   { href: "/history", label: "History", icon: History },
+  { href: "/disputes", label: "Disputes", icon: Flag },
   { href: "/profile", label: "Profile", icon: User },
 ];
 
-export const MEMBER_BOTTOM_NAV_ITEMS = MEMBER_NAV_ITEMS;
+// Mobile gets the five screens people actually open day to day.
+export const MEMBER_BOTTOM_NAV_ITEMS: NavItem[] = [
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/gameweeks", label: "Game Weeks", icon: Trophy },
+  { href: "/chat", label: "Chat", icon: MessageCircle },
+  { href: "/proposals", label: "Vote", icon: Vote },
+  { href: "/profile", label: "Profile", icon: User },
+];
 
 // Payment verification and prize configuration live under each Game Week
 // (/admin/gameweeks/[id]/...) rather than as their own top-level pages —
@@ -36,6 +53,9 @@ export const MEMBER_BOTTOM_NAV_ITEMS = MEMBER_NAV_ITEMS;
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/dashboard", label: "Overview", icon: ShieldCheck },
   { href: "/admin/gameweeks", label: "Game Weeks", icon: Trophy },
+  { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
+  { href: "/admin/rules", label: "Rules", icon: ScrollText },
+  { href: "/admin/disputes", label: "Disputes", icon: Flag },
   { href: "/admin/members", label: "Members", icon: Users },
   { href: "/admin/invites", label: "Invites", icon: Mail },
   { href: "/admin/fpl-sync", label: "FPL Sync", icon: RefreshCw },

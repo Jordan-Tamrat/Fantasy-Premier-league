@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { sumDecimal, decimal } from "@/lib/money";
 import { writeAuditLog } from "@/services/auditService";
+import { notifyEveryone } from "@/services/notificationService";
+import { postSystemMessage } from "@/services/chatService";
 
 interface LockGameWeekActor {
   userId?: string;
@@ -89,6 +91,17 @@ export async function lockGameWeek(gameWeekId: string, actor: LockGameWeekActor)
         collectedAmount: collectedAmount.toFixed(2),
         participantUserIds: verifiedPayments.map((p) => p.userId),
       },
+    });
+
+    await postSystemMessage(
+      tx,
+      `🔒 Game Week ${locked.fplEventId} participation is locked — ${verifiedPayments.length} players, ${collectedAmount.toFixed(2)} in the pot.`,
+    );
+    await notifyEveryone(tx, {
+      type: "GAMEWEEK_LOCKED",
+      title: `Game Week ${locked.fplEventId} is locked`,
+      body: `${verifiedPayments.length} players are competing for ${collectedAmount.toFixed(2)}.`,
+      href: `/gameweeks/${gameWeekId}`,
     });
 
     return locked;

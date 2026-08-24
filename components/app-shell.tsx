@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut } from "lucide-react";
+import { LogOut, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/brand-mark";
@@ -13,6 +13,7 @@ interface AppShellProps {
   variant: "member" | "admin";
   userName: string;
   isAdmin: boolean;
+  unreadCount: number;
   children: React.ReactNode;
 }
 
@@ -20,7 +21,7 @@ interface AppShellProps {
 // picked here, inside the Client Component, rather than passed in as a prop
 // from the server layout — React Server Components can't serialize function
 // values like a component reference across the server->client boundary.
-export function AppShell({ variant, userName, isAdmin, children }: AppShellProps) {
+export function AppShell({ variant, userName, isAdmin, unreadCount, children }: AppShellProps) {
   const navItems = variant === "admin" ? ADMIN_NAV_ITEMS : MEMBER_NAV_ITEMS;
   const bottomNavItems = variant === "admin" ? ADMIN_NAV_ITEMS.slice(0, 4) : MEMBER_BOTTOM_NAV_ITEMS;
   const pathname = usePathname();
@@ -31,7 +32,8 @@ export function AppShell({ variant, userName, isAdmin, children }: AppShellProps
       <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
         <div className="flex items-center gap-2.5 px-6 py-6">
           <BrandMark />
-          <span className="text-[15px] font-bold tracking-tight">Money League</span>
+          <span className="flex-1 text-[15px] font-bold tracking-tight">Money League</span>
+          <NotificationBell unreadCount={unreadCount} />
         </div>
         <nav className="flex-1 space-y-1 px-3">
           {navItems.map((item) => {
@@ -82,15 +84,18 @@ export function AppShell({ variant, userName, isAdmin, children }: AppShellProps
             <BrandMark size="sm" />
             <span className="text-sm font-bold tracking-tight">Money League</span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={handleSignOut}
-            aria-label="Sign out"
-            className="text-white/80 hover:bg-white/10 hover:text-white"
-          >
-            <LogOut className="size-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <NotificationBell unreadCount={unreadCount} onDark />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleSignOut}
+              aria-label="Sign out"
+              className="text-white/80 hover:bg-white/10 hover:text-white"
+            >
+              <LogOut className="size-4" />
+            </Button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-x-hidden pb-24 md:pb-0">{children}</main>
@@ -122,6 +127,26 @@ export function AppShell({ variant, userName, isAdmin, children }: AppShellProps
         </nav>
       </div>
     </div>
+  );
+}
+
+function NotificationBell({ unreadCount, onDark }: { unreadCount: number; onDark?: boolean }) {
+  return (
+    <Link
+      href="/notifications"
+      aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
+      className={cn(
+        "relative flex size-8 items-center justify-center rounded-full transition-colors",
+        onDark ? "text-white/80 hover:bg-white/10 hover:text-white" : "text-sidebar-foreground/70 hover:bg-sidebar-accent",
+      )}
+    >
+      <Bell className="size-4.5" />
+      {unreadCount > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 flex min-w-4 items-center justify-center rounded-full bg-[var(--fpl-pink)] px-1 text-[10px] font-bold text-white">
+          {unreadCount > 9 ? "9+" : unreadCount}
+        </span>
+      )}
+    </Link>
   );
 }
 

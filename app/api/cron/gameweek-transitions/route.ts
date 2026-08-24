@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { FPLService } from "@/lib/fpl";
 import { closePayments, markGameWeekLive, markResultsPending } from "@/services/gameWeekLifecycle";
 import { lockGameWeek } from "@/services/lockGameWeek";
+import { resolveDueProposals } from "@/services/proposalService";
 
 // Advances every Game Week through its lifecycle based on real-world time and
 // FPL state — payment deadline passed, FPL deadline passed, FPL confirmed
@@ -48,5 +49,9 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, transitions: results });
+  // Proposals whose voting deadline has passed get tallied and closed here
+  // too, so there's only one scheduled job to keep an eye on.
+  const resolvedProposals = await resolveDueProposals();
+
+  return NextResponse.json({ ok: true, transitions: results, resolvedProposals });
 }

@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { FPLService } from "@/lib/fpl";
 import { decimal, sumDecimal } from "@/lib/money";
 import { writeAuditLog } from "@/services/auditService";
+import { notifyEveryone } from "@/services/notificationService";
+import { postSystemMessage } from "@/services/chatService";
 
 interface Actor {
   userId: string;
@@ -54,12 +56,25 @@ export async function openGameWeek(gameWeekId: string, actor: Actor) {
     throw new Error(`Cannot open a Game Week in status ${gameWeek.status} (must be DRAFT)`);
   }
 
-  const updated = await prisma.gameWeek.update({ where: { id: gameWeekId }, data: { status: "OPEN" } });
-  await writeAuditLog(prisma, {
-    actorUserId: actor.userId,
-    action: "GAMEWEEK_OPENED",
-    entityType: "GameWeek",
-    entityId: gameWeekId,
+  const updated = await prisma.$transaction(async (tx) => {
+    const opened = await tx.gameWeek.update({ where: { id: gameWeekId }, data: { status: "OPEN" } });
+    await writeAuditLog(tx, {
+      actorUserId: actor.userId,
+      action: "GAMEWEEK_OPENED",
+      entityType: "GameWeek",
+      entityId: gameWeekId,
+    });
+    await postSystemMessage(
+      tx,
+      `📢 Game Week ${opened.fplEventId} is now open for payment — ${decimal(opened.entryFee).toFixed(2)} entry fee.`,
+    );
+    await notifyEveryone(tx, {
+      type: "GAMEWEEK_OPENED",
+      title: `Game Week ${opened.fplEventId} is open`,
+      body: "Pay your entry fee before the deadline to take part.",
+      href: `/gameweeks/${gameWeekId}`,
+    });
+    return opened;
   });
   return updated;
 }

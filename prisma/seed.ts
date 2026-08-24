@@ -164,6 +164,61 @@ async function main() {
     });
   }
 
+  // --- Phase 2 demo data: rules, an announcement, a live vote, some chat ---
+
+  if ((await prisma.ruleSection.count()) === 0) {
+    const rules = [
+      ["Entry Fee & Payment Deadline", "Each Game Week has an entry fee set by the admin. Payment must be made and verified before the payment deadline, which is 2 hours before the FPL deadline."],
+      ["Proof of Payment", "Every payment must include a screenshot. The admin verifies each one before you are counted as a participant."],
+      ["Game Week Scoring", "Only your FPL points for that specific Game Week count. Your overall season total is never used to decide a weekly winner."],
+      ["Prize Money", "The prize pool is the total of all verified entry fees. The admin sets the amount for each prize position, and the total can never exceed the pool."],
+      ["Tie-Breaking", "Players who tie share every prize position their tie covers, split equally. Two players tied for 1st split the 1st and 2nd prizes, and the next player is ranked 3rd — there is no 2nd place."],
+      ["Rule Changes", "Any member can propose a rule change. Every active member gets one vote, and a simple majority passes it."],
+      ["Disputes", "If something looks wrong, raise a dispute. The admin must respond, and every action is recorded in the audit log."],
+    ];
+    for (const [index, [title, body]] of rules.entries()) {
+      await prisma.ruleSection.create({ data: { title, body, order: index + 1 } });
+    }
+  }
+
+  if ((await prisma.announcement.count()) === 0) {
+    await prisma.announcement.create({
+      data: {
+        title: "Welcome to the new league app (DEMO)",
+        body: "Payments, results and prize money all live here now. Chat is on the Chat tab — Telegram is officially retired.",
+        authorId: admin.id,
+      },
+    });
+  }
+
+  if ((await prisma.proposal.count()) === 0) {
+    const proposal = await prisma.proposal.create({
+      data: {
+        title: "Increase entry fee to 150 ETB",
+        description: "Bigger pot, bigger prizes. Proposed starting from next Game Week.",
+        authorId: members[1].id,
+        votingDeadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      },
+    });
+    for (const [index, member] of members.slice(0, 5).entries()) {
+      await prisma.vote.create({
+        data: { proposalId: proposal.id, userId: member.id, choice: index < 3 ? "YES" : "NO" },
+      });
+    }
+  }
+
+  if ((await prisma.chatMessage.count()) === 0) {
+    await prisma.chatMessage.create({
+      data: { type: "SYSTEM", content: "🏆 Game Week 1 results are final.  🥇 Mube — 675.00  ·  🥇 Jordan — 675.00  ·  🥉 Yoseph — 150.00" },
+    });
+    await prisma.chatMessage.create({
+      data: { senderId: members[0].id, content: "Good week everyone 😄" },
+    });
+    await prisma.chatMessage.create({
+      data: { senderId: members[2].id, content: "Robbed by the captain pick again..." },
+    });
+  }
+
   console.log("Seed complete.");
   console.log(`Admin login: ${adminEmail} / ${adminPassword}`);
   console.log("Demo member login: <name>@demo.local / password123");

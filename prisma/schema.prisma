@@ -84,6 +84,15 @@ model User {
   invitesSent       Invite[]              @relation("InviteSender")
   auditLogs         AuditLog[]
 
+  chatMessages      ChatMessage[]  @relation("MessageSender")
+  deletedMessages   ChatMessage[]  @relation("MessageDeleter")
+  announcements     Announcement[]
+  notifications     Notification[]
+  proposals         Proposal[]
+  votes             Vote[]
+  disputes          Dispute[]      @relation("DisputeAuthor")
+  disputesAnswered  Dispute[]      @relation("DisputeResponder")
+
   @@index([role])
 }
 
@@ -272,4 +281,167 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+// --- Phase 2: the parts that replace Telegram ---
+
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
+// There is exactly one league chat room, so there's no ChatRoom model —
+// every message belongs to the single shared conversation.
+model ChatMessage {
+  id             String      @id @default(cuid())
+  senderId       String?
+  sender         User?       @relation("MessageSender", fields: [senderId], references: [id])
+  type           MessageType @default(TEXT)
+  content        String      @db.Text
+  attachmentPath String?
+  replyToId      String?
+  replyTo        ChatMessage?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies        ChatMessage[] @relation("MessageReplies")
+  pinnedAt       DateTime?
+  editedAt       DateTime?
+  // Soft delete: removed messages stay auditable rather than vanishing.
+  deletedAt      DateTime?
+  deletedById    String?
+  deletedBy      User?       @relation("MessageDeleter", fields: [deletedById], references: [id])
+  createdAt      DateTime    @default(now())
+
+  @@index([createdAt])
+  @@index([pinnedAt])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @db.Text
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  PAYMENT_VERIFIED
+  PAYMENT_REJECTED
+  GAMEWEEK_OPENED
+  GAMEWEEK_LOCKED
+  RESULTS_FINAL
+  PRIZE_PAID
+  PROPOSAL_OPENED
+  PROPOSAL_RESOLVED
+  ANNOUNCEMENT
+  DISPUTE_UPDATE
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+// Rules live in the database rather than hard-coded. Edits are recorded in
+// AuditLog (old + new body), which preserves history without a full
+// versioning subsystem.
+model RuleSection {
+  id        String   @id @default(cuid())
+  title     String
+  body      String   @db.Text
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([order])
+}
+
+enum ProposalStatus {
+  OPEN
+  PASSED
+  REJECTED
+  IMPLEMENTED
+}
+
+enum VoteChoice {
+  YES
+  NO
+}
+
+model Proposal {
+  id             String         @id @default(cuid())
+  title          String
+  description    String         @db.Text
+  authorId       String
+  author         User           @relation(fields: [authorId], references: [id])
+  status         ProposalStatus @default(OPEN)
+  votingDeadline DateTime
+  resolvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+
+  votes Vote[]
+
+  @@index([status])
+}
+
+model Vote {
+  id         String     @id @default(cuid())
+  proposalId String
+  proposal   Proposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User       @relation(fields: [userId], references: [id])
+  choice     VoteChoice
+  createdAt  DateTime   @default(now())
+
+  // One vote per member per proposal, enforced by the database rather than
+  // only in application code.
+  @@unique([proposalId, userId])
+}
+
+enum DisputeCategory {
+  PAYMENT
+  FPL_SCORE
+  ELIGIBILITY
+  PRIZE
+  RULE
+  TECHNICAL
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+model Dispute {
+  id            String          @id @default(cuid())
+  authorId      String
+  author        User            @relation("DisputeAuthor", fields: [authorId], references: [id])
+  category      DisputeCategory
+  title         String
+  description   String          @db.Text
+  status        DisputeStatus   @default(OPEN)
+  adminResponse String?         @db.Text
+  respondedById String?
+  respondedBy   User?           @relation("DisputeResponder", fields: [respondedById], references: [id])
+  resolvedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([status])
+  @@index([authorId])
 }

@@ -1,6 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { calculatePrizeDistribution } from "@/services/prizeEngine";
 import { writeAuditLog } from "@/services/auditService";
+import { notifyEveryone } from "@/services/notificationService";
+import { postSystemMessage } from "@/services/chatService";
+
+function medal(rank: number) {
+  if (rank === 1) return "🥇";
+  if (rank === 2) return "🥈";
+  if (rank === 3) return "🥉";
+  return `#${rank}`;
+}
 
 interface FinalizeActor {
   userId?: string;
@@ -95,6 +104,29 @@ export async function finalizeResults(gameWeekId: string, actor: FinalizeActor) 
           prizeAwarded: award.prizeAwarded.toFixed(2),
         })),
       },
+    });
+
+    // Announce the winners by name, so the chat reads the way the Telegram
+    // group used to.
+    const winners = awards.filter((a) => a.prizeAwarded.greaterThan(0));
+    const nameById = new Map(
+      (await tx.user.findMany({ where: { id: { in: winners.map((w) => w.userId) } }, select: { id: true, name: true } })).map(
+        (u) => [u.id, u.name],
+      ),
+    );
+    const winnerLine = winners
+      .map((w) => `${medal(w.rank)} ${nameById.get(w.userId) ?? "Unknown"} — ${w.prizeAwarded.toFixed(2)}`)
+      .join("  ·  ");
+
+    await postSystemMessage(
+      tx,
+      `🏆 Game Week ${updated.fplEventId} results are final.${winnerLine ? `  ${winnerLine}` : ""}`,
+    );
+    await notifyEveryone(tx, {
+      type: "RESULTS_FINAL",
+      title: `Game Week ${updated.fplEventId} results are final`,
+      body: winnerLine || undefined,
+      href: `/gameweeks/${gameWeekId}`,
     });
 
     return updated;

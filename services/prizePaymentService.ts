@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { buildProofPath, uploadProofImage, STORAGE_BUCKETS } from "@/lib/storage";
 import { writeAuditLog } from "@/services/auditService";
+import { notifyUsers } from "@/services/notificationService";
+import { postSystemMessage } from "@/services/chatService";
 
 interface MarkPaidInput {
   prizePaymentId: string;
@@ -54,6 +56,21 @@ export async function markPrizePaymentPaid(input: MarkPaidInput, actor: Actor) {
       entityId: input.prizePaymentId,
       newValue: { amount: prizePayment.amount.toFixed(2), method: input.method },
     });
+
+    const winner = await tx.user.findUnique({
+      where: { id: prizePayment.gameWeekResult.userId },
+      select: { name: true },
+    });
+    await notifyUsers(tx, [prizePayment.gameWeekResult.userId], {
+      type: "PRIZE_PAID",
+      title: `Your prize of ${prizePayment.amount.toFixed(2)} has been paid`,
+      body: `Sent via ${input.method}.`,
+      href: `/gameweeks/${prizePayment.gameWeekResult.gameWeekId}`,
+    });
+    await postSystemMessage(
+      tx,
+      `💰 ${winner?.name ?? "A member"} has been paid ${prizePayment.amount.toFixed(2)}.`,
+    );
 
     const gameWeekId = prizePayment.gameWeekResult.gameWeekId;
     const remainingUnpaid = await tx.prizePayment.count({
