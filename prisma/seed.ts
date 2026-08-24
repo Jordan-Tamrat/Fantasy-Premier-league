@@ -29,7 +29,7 @@ async function main() {
     update: {},
     create: {
       id: "default",
-      leagueName: "Ethiosinia Fantasy League (DEMO)",
+      leagueName: "Ethiosinia Fantasy Premium League (DEMO)",
       currency: "ETB",
       defaultEntryFee: 100,
       defaultPaymentDeadlineOffsetHours: 2,
