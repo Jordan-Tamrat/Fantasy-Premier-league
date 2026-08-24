@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { Users, Clock, Coins, Trophy } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { GameWeekStatusBadge } from "@/components/gameweek-status-badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { StatChip } from "@/components/stat-chip";
 
 export default async function AdminDashboardPage() {
   const [currentGameWeek, memberCount, pendingPayments, pendingPrizePayments] = await Promise.all([
@@ -21,49 +22,36 @@ export default async function AdminDashboardPage() {
     : 0;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
-      <h1 className="text-2xl font-semibold">Admin Overview</h1>
-
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Active members" value={memberCount} />
-        <StatCard label="Pending payments" value={pendingPayments} href="/admin/gameweeks" />
-        <StatCard label="Pending prize payouts" value={pendingPrizePayments} href="/admin/gameweeks" />
-        <StatCard
-          label="Current Game Week"
-          value={currentGameWeek ? `GW${currentGameWeek.fplEventId}` : "—"}
-          href={currentGameWeek ? `/admin/gameweeks/${currentGameWeek.id}` : undefined}
-        />
+    <div className="mx-auto max-w-4xl">
+      <div className="bg-fpl-hero relative z-0 px-4 pt-6 pb-10 text-white md:rounded-b-3xl md:px-8">
+        <h1 className="text-2xl font-bold tracking-tight">Admin Overview</h1>
       </div>
 
-      {currentGameWeek && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Game Week {currentGameWeek.fplEventId}</CardTitle>
-            <GameWeekStatusBadge status={currentGameWeek.status} />
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>Participants: {verifiedCount}</p>
-            <p>
-              Collected: {formatMoney(currentGameWeek.collectedAmountSnapshot ?? currentGameWeek.entryFee.times(verifiedCount))}
-            </p>
-            <Link href={`/admin/gameweeks/${currentGameWeek.id}`} className="text-primary underline underline-offset-4">
-              Manage this Game Week →
-            </Link>
-          </CardContent>
-        </Card>
-      )}
+      <div className="relative z-10 -mt-6 space-y-6 px-4 pb-8 md:px-8">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <StatChip icon={Users} label="Active members" value={memberCount} tone="cyan" />
+          <StatChip icon={Clock} label="Pending payments" value={pendingPayments} tone={pendingPayments > 0 ? "pink" : "default"} />
+          <StatChip icon={Coins} label="Pending payouts" value={pendingPrizePayments} tone={pendingPrizePayments > 0 ? "pink" : "default"} />
+          <StatChip icon={Trophy} label="Current GW" value={currentGameWeek ? currentGameWeek.fplEventId : "—"} tone="green" />
+        </div>
+
+        {currentGameWeek && (
+          <Link href={`/admin/gameweeks/${currentGameWeek.id}`}>
+            <Card className="transition-all hover:border-primary/40 hover:shadow-md">
+              <CardContent className="flex items-center justify-between py-4">
+                <div>
+                  <p className="font-bold">Game Week {currentGameWeek.fplEventId}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {verifiedCount} participants ·{" "}
+                    {formatMoney(currentGameWeek.collectedAmountSnapshot ?? currentGameWeek.entryFee.times(verifiedCount))} collected
+                  </p>
+                </div>
+                <span className="text-sm font-semibold text-primary">Manage →</span>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+      </div>
     </div>
   );
-}
-
-function StatCard({ label, value, href }: { label: string; value: string | number; href?: string }) {
-  const content = (
-    <Card>
-      <CardContent className="py-4">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-2xl font-semibold">{value}</p>
-      </CardContent>
-    </Card>
-  );
-  return href ? <Link href={href}>{content}</Link> : content;
 }

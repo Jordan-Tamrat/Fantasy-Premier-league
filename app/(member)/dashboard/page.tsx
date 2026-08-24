@@ -1,11 +1,11 @@
-import Link from "next/link";
+import { Coins, Users, Wallet, LinkIcon, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { GameWeekStatusBadge } from "@/components/gameweek-status-badge";
+import { ButtonLink } from "@/components/button-link";
+import { Card, CardContent } from "@/components/ui/card";
+import { GameWeekHero } from "@/components/gw-hero";
+import { StatChip } from "@/components/stat-chip";
 import { Countdown } from "@/components/countdown";
 
 export default async function DashboardPage() {
@@ -30,63 +30,56 @@ export default async function DashboardPage() {
     ? await prisma.payment.count({ where: { gameWeekId: currentGameWeek.id, status: "VERIFIED" } })
     : 0;
 
-  return (
-    <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-8">
-      <h1 className="text-2xl font-semibold">Welcome, {user.name?.split(" ")[0] ?? "there"} 👋</h1>
+  const firstName = user.name?.split(" ")[0] ?? "there";
 
-      {!currentGameWeek ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
+  if (!currentGameWeek) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-8">
+        <h1 className="text-2xl font-bold tracking-tight">Hey {firstName} 👋</h1>
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center text-muted-foreground">
             No Game Week is open right now. Check back soon.
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Game Week {currentGameWeek.fplEventId}</CardTitle>
-            <GameWeekStatusBadge status={currentGameWeek.status} />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {currentGameWeek.status === "OPEN" && (
-              <Countdown label="Payment deadline" target={currentGameWeek.paymentDeadline} />
-            )}
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Entry fee</p>
-                <p className="font-medium">{formatMoney(currentGameWeek.entryFee)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Participants</p>
-                <p className="font-medium">{participantCount}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Your payment</p>
-                <p className="font-medium">
-                  {myPayment ? <PaymentStatusLabel status={myPayment.status} /> : "Not submitted"}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">FPL account</p>
-                <p className="font-medium">{myFplAccount ? myFplAccount.fplTeamName ?? "Linked" : "Not linked"}</p>
-              </div>
-            </div>
-            <Button
-              className="w-full"
-              render={<Link href={`/gameweeks/${currentGameWeek.id}`}>View Game Week</Link>}
-            />
-          </CardContent>
-        </Card>
-      )}
+      </div>
+    );
+  }
+
+  const payment = paymentDisplay(myPayment?.status);
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <GameWeekHero fplEventId={currentGameWeek.fplEventId} status={currentGameWeek.status} subtitle={`Hey ${firstName} 👋`}>
+        {currentGameWeek.status === "OPEN" && (
+          <Countdown variant="hero" label="Payment deadline" target={currentGameWeek.paymentDeadline} />
+        )}
+      </GameWeekHero>
+
+      <div className="relative z-10 -mt-6 space-y-4 px-4 pb-8 md:px-8">
+        <div className="grid grid-cols-2 gap-3">
+          <StatChip icon={Coins} label="Entry fee" value={formatMoney(currentGameWeek.entryFee)} tone="green" />
+          <StatChip icon={Users} label="Participants" value={participantCount} tone="cyan" />
+          <StatChip icon={payment.icon} label="Your payment" value={payment.label} tone={payment.tone} />
+          <StatChip icon={LinkIcon} label="FPL account" value={myFplAccount?.fplTeamName ?? "Not linked"} />
+        </div>
+
+        <ButtonLink href={`/gameweeks/${currentGameWeek.id}`} size="lg" className="w-full font-bold">
+          View Game Week
+        </ButtonLink>
+      </div>
     </div>
   );
 }
 
-function PaymentStatusLabel({ status }: { status: string }) {
-  const map: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
-    PENDING: { label: "Under review", variant: "secondary" },
-    VERIFIED: { label: "Verified ✅", variant: "default" },
-    REJECTED: { label: "Rejected", variant: "destructive" },
-  };
-  const entry = map[status] ?? { label: status, variant: "secondary" as const };
-  return <Badge variant={entry.variant}>{entry.label}</Badge>;
+function paymentDisplay(status: string | undefined) {
+  switch (status) {
+    case "VERIFIED":
+      return { icon: CheckCircle2, label: "Verified", tone: "green" as const };
+    case "PENDING":
+      return { icon: Clock, label: "Under review", tone: "default" as const };
+    case "REJECTED":
+      return { icon: XCircle, label: "Rejected", tone: "pink" as const };
+    default:
+      return { icon: Wallet, label: "Not submitted", tone: "default" as const };
+  }
 }

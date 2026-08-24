@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { formatMoney } from "@/lib/money";
+import { RankBadge, Avatar } from "@/components/rank-badge";
 import { retrySyncOneAction, submitManualScoreAction } from "./actions";
 import { MarkPrizePaidForm } from "./mark-prize-paid-form";
 
@@ -45,7 +46,7 @@ function ParticipantScoreRowItem({
   );
 
   return (
-    <div className="rounded-md border p-3 text-sm">
+    <div className="rounded-xl border p-3 text-sm">
       <div className="flex items-center justify-between">
         <span className="font-medium">{participant.userName}</span>
         {participant.points == null ? (
@@ -91,12 +92,15 @@ export function FinalResultsSection({ gameWeekId, results }: { gameWeekId: strin
   return (
     <div className="space-y-2">
       {results.map((r) => (
-        <div key={r.id} className="rounded-md border p-3 text-sm">
-          <div className="flex items-center justify-between">
-            <span>
-              {medal(r.rank)} {r.userName} — {r.points} pts
-            </span>
-            {r.prizeAwarded !== "0" && <span className="font-medium">{formatMoney(r.prizeAwarded)}</span>}
+        <div key={r.id} className="rounded-xl border p-3 text-sm">
+          <div className="flex items-center gap-3">
+            <RankBadge rank={r.rank} />
+            <Avatar name={r.userName} />
+            <span className="flex-1 truncate font-semibold">{r.userName}</span>
+            <span className="text-muted-foreground">{r.points} pts</span>
+            {r.prizeAwarded !== "0" && (
+              <span className="font-bold text-[var(--fpl-green)]">{formatMoney(r.prizeAwarded)}</span>
+            )}
           </div>
           {r.prizePayment && r.prizePayment.status === "PENDING" && (
             <MarkPrizePaidForm gameWeekId={gameWeekId} prizePaymentId={r.prizePayment.id} />
@@ -108,11 +112,4 @@ export function FinalResultsSection({ gameWeekId, results }: { gameWeekId: strin
       ))}
     </div>
   );
-}
-
-function medal(rank: number) {
-  if (rank === 1) return "🥇";
-  if (rank === 2) return "🥈";
-  if (rank === 3) return "🥉";
-  return `#${rank}`;
 }

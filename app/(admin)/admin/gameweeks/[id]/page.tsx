@@ -4,7 +4,9 @@ import { decimal, formatMoney } from "@/lib/money";
 import { getSignedProofUrl, STORAGE_BUCKETS } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GameWeekStatusBadge } from "@/components/gameweek-status-badge";
+import { GameWeekHero } from "@/components/gw-hero";
+import { StatChip } from "@/components/stat-chip";
+import { Users, Coins, CalendarClock, Hash } from "lucide-react";
 import { LifecycleActions } from "./lifecycle-actions";
 import { PrizePositionsForm } from "./prize-positions-form";
 import { PaymentsSection, type PaymentRow } from "./payments-section";
@@ -65,77 +67,79 @@ export default async function AdminGameWeekDetailPage({ params }: { params: Prom
   const showFinalResults = results.length > 0;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Game Week {gameWeek.fplEventId}</h1>
-        <GameWeekStatusBadge status={gameWeek.status} />
-      </div>
+    <div className="mx-auto max-w-3xl">
+      <GameWeekHero fplEventId={gameWeek.fplEventId} status={gameWeek.status} />
 
-      <Card>
-        <CardContent className="space-y-3 py-4">
-          <LifecycleActions gameWeekId={gameWeek.id} status={gameWeek.status} />
-        </CardContent>
-      </Card>
+      <div className="relative z-10 -mt-6 space-y-6 px-4 pb-8 md:px-8">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <StatChip icon={Coins} label="Entry fee" value={formatMoney(gameWeek.entryFee)} tone="green" />
+          <StatChip icon={Users} label="Participants" value={verifiedCount} tone="cyan" />
+          <StatChip icon={Hash} label="Min. required" value={gameWeek.minParticipants} />
+          <StatChip icon={CalendarClock} label="Collected" value={formatMoney(collectedAmount)} tone="pink" />
+        </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="prizes">Prizes</TabsTrigger>
-          <TabsTrigger value="payments">Payments ({payments.length})</TabsTrigger>
-          {(showPendingResults || showFinalResults) && <TabsTrigger value="results">Results</TabsTrigger>}
-        </TabsList>
+        <Card>
+          <CardContent className="py-4">
+            <LifecycleActions gameWeekId={gameWeek.id} status={gameWeek.status} />
+          </CardContent>
+        </Card>
 
-        <TabsContent value="overview">
-          <Card>
-            <CardContent className="grid grid-cols-2 gap-4 py-4 text-sm">
-              <Info label="FPL deadline" value={gameWeek.fplDeadline.toLocaleString()} />
-              <Info label="Payment deadline" value={gameWeek.paymentDeadline.toLocaleString()} />
-              <Info label="Entry fee" value={formatMoney(gameWeek.entryFee)} />
-              <Info label="Minimum participants" value={gameWeek.minParticipants} />
-              <Info label="Verified participants" value={verifiedCount} />
-              <Info label="Collected" value={formatMoney(collectedAmount)} />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Tabs defaultValue="overview">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="prizes">Prizes</TabsTrigger>
+            <TabsTrigger value="payments">Payments ({payments.length})</TabsTrigger>
+            {(showPendingResults || showFinalResults) && <TabsTrigger value="results">Results</TabsTrigger>}
+          </TabsList>
 
-        <TabsContent value="prizes">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Prize distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PrizePositionsForm
-                gameWeekId={gameWeek.id}
-                positions={gameWeek.prizePositions.map((p) => ({ position: p.position, amount: p.amount.toString() }))}
-                collectedAmount={collectedAmount.toString()}
-                frozen={!!gameWeek.prizeConfigFrozenAt}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="payments">
-          <Card>
-            <CardContent className="py-4">
-              <PaymentsSection gameWeekId={gameWeek.id} payments={paymentRows} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {(showPendingResults || showFinalResults) && (
-          <TabsContent value="results">
+          <TabsContent value="overview">
             <Card>
-              <CardContent className="py-4">
-                {showFinalResults ? (
-                  <FinalResultsSection gameWeekId={gameWeek.id} results={finalResultRows} />
-                ) : (
-                  <PendingResultsSection gameWeekId={gameWeek.id} participants={participantScoreRows} />
-                )}
+              <CardContent className="grid grid-cols-2 gap-4 py-4 text-sm">
+                <Info label="FPL deadline" value={gameWeek.fplDeadline.toLocaleString()} />
+                <Info label="Payment deadline" value={gameWeek.paymentDeadline.toLocaleString()} />
               </CardContent>
             </Card>
           </TabsContent>
-        )}
-      </Tabs>
+
+          <TabsContent value="prizes">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Prize distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PrizePositionsForm
+                  gameWeekId={gameWeek.id}
+                  positions={gameWeek.prizePositions.map((p) => ({ position: p.position, amount: p.amount.toString() }))}
+                  collectedAmount={collectedAmount.toString()}
+                  frozen={!!gameWeek.prizeConfigFrozenAt}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <Card>
+              <CardContent className="py-4">
+                <PaymentsSection gameWeekId={gameWeek.id} payments={paymentRows} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {(showPendingResults || showFinalResults) && (
+            <TabsContent value="results">
+              <Card>
+                <CardContent className="py-4">
+                  {showFinalResults ? (
+                    <FinalResultsSection gameWeekId={gameWeek.id} results={finalResultRows} />
+                  ) : (
+                    <PendingResultsSection gameWeekId={gameWeek.id} participants={participantScoreRows} />
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
     </div>
   );
 }

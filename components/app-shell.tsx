@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut, Trophy } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "@/components/brand-mark";
 import { MEMBER_NAV_ITEMS, MEMBER_BOTTOM_NAV_ITEMS, ADMIN_NAV_ITEMS } from "@/components/nav-items";
 
 interface AppShellProps {
@@ -26,11 +27,11 @@ export function AppShell({ variant, userName, isAdmin, children }: AppShellProps
   const handleSignOut = () => signOut({ redirectTo: "/login" });
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
-        <div className="flex items-center gap-2 px-5 py-5">
-          <Trophy className="size-5 text-primary" />
-          <span className="font-semibold">Money League</span>
+    <div className="flex min-h-screen bg-background">
+      <aside className="hidden w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
+        <div className="flex items-center gap-2.5 px-6 py-6">
+          <BrandMark />
+          <span className="text-[15px] font-bold tracking-tight">Money League</span>
         </div>
         <nav className="flex-1 space-y-1 px-3">
           {navItems.map((item) => {
@@ -40,45 +41,61 @@ export function AppShell({ variant, userName, isAdmin, children }: AppShellProps
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-semibold transition-all",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 )}
               >
-                <item.icon className="size-4" />
+                <item.icon className={cn("size-4.5", active && "text-[var(--fpl-green)]")} />
                 {item.label}
+                {active && <span className="ml-auto size-1.5 rounded-full bg-[var(--fpl-green)]" />}
               </Link>
             );
           })}
         </nav>
-        <div className="border-t p-3">
-          <div className="flex items-center justify-between px-2 py-1">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{userName}</p>
-              {isAdmin && <p className="text-xs text-muted-foreground">Admin</p>}
+        <div className="m-3 flex items-center justify-between rounded-2xl bg-sidebar-accent/60 p-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--fpl-green)] text-xs font-bold text-[var(--fpl-purple)]">
+              {initials(userName)}
             </div>
-            <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sign out">
-              <LogOut className="size-4" />
-            </Button>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{userName}</p>
+              {isAdmin && <p className="text-xs text-sidebar-foreground/60">Admin</p>}
+            </div>
           </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleSignOut}
+            aria-label="Sign out"
+            className="shrink-0 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <LogOut className="size-4" />
+          </Button>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b px-4 py-3 md:hidden">
+        <header className="flex items-center justify-between bg-fpl-hero px-4 py-3.5 text-white md:hidden">
           <div className="flex items-center gap-2">
-            <Trophy className="size-5 text-primary" />
-            <span className="font-semibold">Money League</span>
+            <BrandMark size="sm" />
+            <span className="text-sm font-bold tracking-tight">Money League</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sign out">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleSignOut}
+            aria-label="Sign out"
+            className="text-white/80 hover:bg-white/10 hover:text-white"
+          >
             <LogOut className="size-4" />
           </Button>
         </header>
 
-        <main className="flex-1 overflow-x-hidden pb-20 md:pb-0">{children}</main>
+        <main className="flex-1 overflow-x-hidden pb-24 md:pb-0">{children}</main>
 
-        <nav className="fixed inset-x-0 bottom-0 flex border-t bg-background md:hidden">
+        <nav className="fixed inset-x-3 bottom-3 z-40 flex items-center justify-around rounded-full border border-border/60 bg-card/90 px-1 py-1.5 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.25)] backdrop-blur-lg md:hidden">
           {bottomNavItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -86,11 +103,18 @@ export function AppShell({ variant, userName, isAdmin, children }: AppShellProps
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium",
+                  "flex flex-1 flex-col items-center gap-0.5 rounded-full py-2 text-[11px] font-semibold transition-colors",
                   active ? "text-primary" : "text-muted-foreground",
                 )}
               >
-                <item.icon className="size-5" />
+                <span
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-full transition-colors",
+                    active && "bg-primary",
+                  )}
+                >
+                  <item.icon className={cn("size-[18px]", active ? "text-primary-foreground" : "text-muted-foreground")} />
+                </span>
                 {item.label}
               </Link>
             );
@@ -99,4 +123,10 @@ export function AppShell({ variant, userName, isAdmin, children }: AppShellProps
       </div>
     </div>
   );
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  const chars = parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0];
+  return chars.toUpperCase();
 }

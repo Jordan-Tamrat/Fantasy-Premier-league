@@ -39,7 +39,7 @@ function PaymentRowItem({ gameWeekId, payment }: { gameWeekId: string; payment: 
   );
 
   return (
-    <div className="rounded-md border p-3 text-sm">
+    <div className="rounded-xl border p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-medium">{payment.userName}</p>

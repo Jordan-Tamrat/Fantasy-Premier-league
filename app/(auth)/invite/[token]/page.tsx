@@ -8,19 +8,21 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
 
   if (!invite) {
     return (
-      <Card>
+      <Card className="border-white/10 bg-white/95 shadow-2xl backdrop-blur-xl">
         <CardHeader>
           <CardTitle>Invite not valid</CardTitle>
-          <CardDescription>This invite link has expired, been used, or was revoked. Ask the league admin for a new one.</CardDescription>
+          <CardDescription>
+            This invite link has expired, been used, or was revoked. Ask the league admin for a new one.
+          </CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
   return (
-    <Card>
+    <Card className="border-white/10 bg-white/95 shadow-2xl backdrop-blur-xl">
       <CardHeader>
-        <CardTitle className="text-xl">Join Fantasy Money League</CardTitle>
+        <CardTitle className="text-xl">Join the league</CardTitle>
         <CardDescription>You&apos;ve been invited as {invite.email}. Set your name and password.</CardDescription>
       </CardHeader>
       <CardContent>

@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { Trophy, Medal, Target, Coins } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatMoney, sumDecimal } from "@/lib/money";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { StatChip } from "@/components/stat-chip";
 
 export default async function HistoryPage() {
   const user = await requireUser();
@@ -23,46 +25,52 @@ export default async function HistoryPage() {
   const entryFeesPaid = sumDecimal(participations.map((p) => p.entryFeePaidSnapshot));
   const winnings = sumDecimal(myResults.map((r) => r.prizeAwarded));
   const net = winnings.minus(entryFeesPaid);
+  const isPositive = net.greaterThanOrEqualTo(0);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-8">
-      <h1 className="text-2xl font-semibold">History</h1>
+    <div className="mx-auto max-w-2xl">
+      <div className="bg-fpl-hero relative z-0 px-4 pt-6 pb-10 text-center text-white md:rounded-b-3xl md:px-8">
+        <p className="text-xs font-semibold tracking-widest text-white/60 uppercase">Net winnings</p>
+        <p className={`text-4xl font-black tracking-tight ${isPositive ? "text-[var(--fpl-green)]" : "text-[var(--fpl-pink)]"}`}>
+          {isPositive ? "+" : ""}
+          {formatMoney(net)}
+        </p>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Your stats</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
-          <Stat label="Participated" value={participations.length} />
-          <Stat label="Wins" value={wins} />
-          <Stat label="Top 3" value={top3} />
-          <Stat label="Entry fees paid" value={formatMoney(entryFeesPaid)} />
-          <Stat label="Winnings" value={formatMoney(winnings)} />
-          <Stat label="Net" value={`${net.greaterThanOrEqualTo(0) ? "+" : ""}${formatMoney(net)}`} />
-        </CardContent>
-      </Card>
+      <div className="relative z-10 -mt-6 space-y-4 px-4 pb-8 md:px-8">
+        <div className="grid grid-cols-2 gap-3">
+          <StatChip icon={Target} label="Participated" value={participations.length} />
+          <StatChip icon={Trophy} label="Wins" value={wins} tone="green" />
+          <StatChip icon={Medal} label="Top 3 finishes" value={top3} tone="cyan" />
+          <StatChip icon={Coins} label="Total winnings" value={formatMoney(winnings)} tone="pink" />
+        </div>
 
-      <div className="space-y-2">
-        {completedGameWeeks.length === 0 ? (
-          <p className="text-muted-foreground">No completed Game Weeks yet.</p>
-        ) : (
-          completedGameWeeks.map((gw) => (
-            <Link key={gw.id} href={`/gameweeks/${gw.id}`}>
-              <Card className="transition-colors hover:bg-muted/50">
-                <CardContent className="py-4">
-                  <p className="mb-2 font-medium">Game Week {gw.fplEventId}</p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    {gw.results.map((r) => (
-                      <span key={r.id}>
-                        {medal(r.rank)} {r.user.name}
-                      </span>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))
-        )}
+        <div className="space-y-2.5">
+          {completedGameWeeks.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-12 text-center text-muted-foreground">No completed Game Weeks yet.</CardContent>
+            </Card>
+          ) : (
+            completedGameWeeks.map((gw) => (
+              <Link key={gw.id} href={`/gameweeks/${gw.id}`}>
+                <Card className="transition-all hover:border-primary/40 hover:shadow-md">
+                  <CardContent className="flex items-center gap-3 py-3.5">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--fpl-purple)] text-sm font-black text-white">
+                      {gw.fplEventId}
+                    </span>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      {gw.results.map((r) => (
+                        <span key={r.id} className="font-medium">
+                          {medal(r.rank)} {r.user.name}
+                        </span>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
@@ -73,13 +81,4 @@ function medal(rank: number) {
   if (rank === 2) return "🥈";
   if (rank === 3) return "🥉";
   return `#${rank}`;
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div>
-      <p className="text-muted-foreground">{label}</p>
-      <p className="font-medium">{value}</p>
-    </div>
-  );
 }
