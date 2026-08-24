@@ -50,5 +50,5 @@ export async function togglePinAction(messageId: string, pinned: boolean) {
 export async function fetchNewMessagesAction(sinceIso: string): Promise<ChatMessageView[]> {
   await requireUser();
   const messages = await listMessagesSince(new Date(sinceIso));
-  return Promise.all(messages.map(toChatMessageView));
+  return messages.map(toChatMessageView);
 }

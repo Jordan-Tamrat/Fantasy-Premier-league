@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { decimal, formatMoney } from "@/lib/money";
-import { getSignedProofUrl, STORAGE_BUCKETS } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GameWeekHero } from "@/components/gw-hero";
@@ -33,17 +32,17 @@ export default async function AdminGameWeekDetailPage({ params }: { params: Prom
     }),
   ]);
 
-  const paymentRows: PaymentRow[] = await Promise.all(
-    payments.map(async (p) => ({
-      id: p.id,
-      userName: p.user.name,
-      amount: p.amount.toString(),
-      method: p.method,
-      status: p.status,
-      rejectionReason: p.rejectionReason,
-      screenshotUrl: await getSignedProofUrl(STORAGE_BUCKETS.paymentProofs, p.screenshotPath).catch(() => null),
-    })),
-  );
+  // Proof URLs point at the authenticated attachment route rather than being
+  // signed here, so this page renders without a Storage call per payment.
+  const paymentRows: PaymentRow[] = payments.map((p) => ({
+    id: p.id,
+    userName: p.user.name,
+    amount: p.amount.toString(),
+    method: p.method,
+    status: p.status,
+    rejectionReason: p.rejectionReason,
+    screenshotUrl: `/api/attachments/payment/${p.id}`,
+  }));
 
   const snapshotByUserId = new Map(snapshots.map((s) => [s.userId, s]));
   const participantScoreRows: ParticipantScoreRow[] = participants.map((p) => ({

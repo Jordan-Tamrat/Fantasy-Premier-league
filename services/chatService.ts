@@ -6,6 +6,10 @@ import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client";
 type PrismaTx = PrismaClient | Prisma.TransactionClient;
 
 const MESSAGE_PAGE_SIZE = 50;
+// A client that's fallen further behind than this (tab left open overnight)
+// gets a capped batch rather than an unbounded query; reloading the page
+// fetches a clean recent window.
+const POLL_BATCH_LIMIT = 100;
 
 export async function listMessages(options?: { before?: Date }) {
   const messages = await prisma.chatMessage.findMany({
@@ -29,6 +33,7 @@ export async function listMessagesSince(since: Date) {
       replyTo: { select: { id: true, content: true, sender: { select: { name: true } } } },
     },
     orderBy: { createdAt: "asc" },
+    take: POLL_BATCH_LIMIT,
   });
 }
 

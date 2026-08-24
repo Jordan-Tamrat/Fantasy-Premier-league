@@ -6,7 +6,7 @@ import { ChatRoom } from "./chat-room";
 export default async function ChatPage() {
   const user = await requireUser();
   const messages = await listMessages();
-  const views = await Promise.all(messages.map(toChatMessageView));
+  const views = messages.map(toChatMessageView);
 
   return <ChatRoom initialMessages={views} currentUserId={user.id} isAdmin={user.role === "ADMIN"} />;
 }

@@ -26,7 +26,8 @@ prisma/seed.ts            Demo data (admin + 8 members, a completed Game Week wi
 lib/prisma.ts             Prisma client (pg driver adapter, pooled connection)
 lib/auth.ts               Auth.js config + requireUser()/requireAdmin() guards
 lib/money.ts              Decimal/cents helpers (decimal.js — deliberately not Prisma's re-export, see below)
-lib/storage.ts            Supabase Storage: proof upload + signed URLs
+lib/storage.ts            Supabase Storage: upload + signed URL minting
+app/api/attachments/      Authenticated proxy for private files (see note below)
 lib/fpl/                  FPLService — the only code that knows FPL's API endpoints
 lib/validations/          Zod schemas
 services/                 Business logic (prize engine, lock/finalize, payments, chat, proposals, ...)
@@ -35,6 +36,8 @@ app/(member)/             /dashboard, /gameweeks, /chat, /rules, /proposals, /di
 app/(admin)/admin/        Game Weeks, members, announcements, rules, disputes, settings — admin only
 app/api/cron/             Scheduled jobs, protected by CRON_SECRET (not user sessions)
 ```
+
+**Private files** (payment proofs, prize proofs, chat images) are never linked as signed Supabase URLs from a page. Pages link to `/api/attachments/{chat|payment|prize}/{id}`, which checks the session, authorizes the specific record, and redirects to a freshly minted signed URL. That keeps authorization in one place and means rendering a list of 50 messages or payments costs zero Storage API calls — a URL is only minted when a browser actually loads the image.
 
 Server actions live as `actions.ts` next to the route that uses them and stay thin: auth guard, Zod parse, call into `services/`. Business logic itself is framework-agnostic and lives in `services/`, not in components — `services/prizeEngine.ts` in particular has zero I/O, which is what makes it fully unit-testable.
 
@@ -107,6 +110,7 @@ npm run db:seed      # prisma db seed
 - **No automated tests yet for `lockGameWeek`/`finalizeResults`** — these need a real Postgres instance to test transaction behavior meaningfully; the prize engine itself (the highest-risk part) has full coverage. Worth adding once a test database is available.
 - **Payment proof review UX is basic** — signed URLs are generated server-side per page load rather than through a dedicated API route; fine at this scale, but note if screenshot review traffic ever grows.
 - **No email delivery** — invite links are shown to the admin to share manually (WhatsApp, SMS, etc.) rather than emailed. Notifications are in-app only.
-- **Chat updates by polling, not websockets** — the chat client asks for new messages every 4 seconds while the tab is visible. For ~20 members this is fine and avoids bridging NextAuth sessions into Supabase Realtime's row-level-security model. If the league ever grows a lot, that's the thing to revisit.
+- **Chat updates by polling, not websockets** — the client asks for new messages every 4 seconds while a conversation is active, backing off to 20 seconds once it's been quiet for two minutes, and skipping the request entirely while the tab is hidden. For ~20 members this is fine and avoids bridging NextAuth sessions into Supabase Realtime's row-level-security model (a second auth system to keep in sync). If concurrent viewers ever reach the high tens, Supabase Realtime is the upgrade path.
+- **No "load older messages"** — the chat shows the most recent 50. `listMessages()` already takes a `before` cursor, so adding a scroll-back button is small, but the UI doesn't call it yet.
 - **Chat has no reactions, typing indicators, or presence** — deliberately scoped to what the league actually needs (send, reply, attach an image, pin, delete).
 - **`npm audit` reports a high-severity advisory in `deepmerge-ts`**, a transitive dependency of Prisma's own CLI config loader (not reachable from application code — it only processes `prisma.config.ts`, which we author). No fix is available yet without downgrading Prisma or using an unstable release candidate; left as-is and worth revisiting when Prisma patches it.

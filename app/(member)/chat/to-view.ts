@@ -1,4 +1,3 @@
-import { getSignedProofUrl, STORAGE_BUCKETS } from "@/lib/storage";
 import type { ChatMessageView } from "./message-view";
 
 interface MessageRecord {
@@ -14,16 +13,19 @@ interface MessageRecord {
   replyTo?: { id: string; content: string; sender: { name: string } | null } | null;
 }
 
-/** Maps a stored message to what the client sees, minting a signed URL for any attachment. */
-export async function toChatMessageView(message: MessageRecord): Promise<ChatMessageView> {
+/**
+ * Maps a stored message to what the client sees. Attachments are referenced by
+ * a stable app URL rather than a signed Supabase URL, so rendering a page of
+ * messages costs no Storage API calls — the URL is minted on demand by
+ * app/api/attachments/[kind]/[id] when a browser actually loads the image.
+ */
+export function toChatMessageView(message: MessageRecord): ChatMessageView {
   return {
     id: message.id,
     content: message.deletedAt ? "" : message.content,
     type: message.type as ChatMessageView["type"],
     attachmentUrl:
-      message.attachmentPath && !message.deletedAt
-        ? await getSignedProofUrl(STORAGE_BUCKETS.chatAttachments, message.attachmentPath, 3600).catch(() => null)
-        : null,
+      message.attachmentPath && !message.deletedAt ? `/api/attachments/chat/${message.id}` : null,
     isPinned: !!message.pinnedAt,
     isEdited: !!message.editedAt,
     isDeleted: !!message.deletedAt,

@@ -11,7 +11,13 @@ import type { ChatMessageView } from "./message-view";
 // Live updates by polling rather than websockets: for a private league of ~20
 // this is entirely adequate and avoids bridging NextAuth sessions into
 // Supabase Realtime's RLS model.
-const POLL_INTERVAL_MS = 4000;
+//
+// The interval adapts so an idle tab isn't burning a request every 4s all day:
+// fast while the conversation is moving, slow once it's been quiet for a
+// while. Any new message (received or sent) counts as activity.
+const POLL_ACTIVE_MS = 4000;
+const POLL_IDLE_MS = 20000;
+const ACTIVITY_WINDOW_MS = 2 * 60 * 1000;
 
 export function ChatRoom({
   initialMessages,
@@ -36,25 +42,46 @@ export function ChatRoom({
     messagesRef.current = messages;
   }, [messages]);
 
+  // Seeded in the effect below, not here — Date.now() during render is impure.
+  const lastActivityRef = useRef(0);
+
   // Poll for anything sent by other members since the newest message we hold.
+  // Self-scheduling timeout rather than setInterval so the delay can change
+  // between ticks.
   useEffect(() => {
-    const interval = setInterval(async () => {
-      if (document.hidden) return;
-      const latest = messagesRef.current[messagesRef.current.length - 1];
-      const since = latest?.createdAt ?? new Date(0).toISOString();
-      try {
-        const incoming = await fetchNewMessagesAction(since);
-        if (incoming.length > 0) {
-          setMessages((prev) => {
-            const known = new Set(prev.map((m) => m.id));
-            return [...prev, ...incoming.filter((m) => !known.has(m.id))];
-          });
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    lastActivityRef.current = Date.now();
+
+    const tick = async () => {
+      // A hidden tab skips the request but keeps a cheap timer running, so
+      // coming back to it picks up within one active interval.
+      if (!document.hidden) {
+        const latest = messagesRef.current[messagesRef.current.length - 1];
+        const since = latest?.createdAt ?? new Date(0).toISOString();
+        try {
+          const incoming = await fetchNewMessagesAction(since);
+          if (incoming.length > 0 && !cancelled) {
+            lastActivityRef.current = Date.now();
+            setMessages((prev) => {
+              const known = new Set(prev.map((m) => m.id));
+              return [...prev, ...incoming.filter((m) => !known.has(m.id))];
+            });
+          }
+        } catch {
+          // A failed poll is not worth surfacing — the next tick retries.
         }
-      } catch {
-        // A failed poll is not worth surfacing — the next tick retries.
       }
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+      if (cancelled) return;
+      const isQuiet = !document.hidden && Date.now() - lastActivityRef.current > ACTIVITY_WINDOW_MS;
+      timeoutId = setTimeout(tick, isQuiet ? POLL_IDLE_MS : POLL_ACTIVE_MS);
+    };
+
+    timeoutId = setTimeout(tick, POLL_ACTIVE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   useEffect(() => {
@@ -65,6 +92,9 @@ export function ChatRoom({
   // reacting to isPending in an effect (which causes cascading renders).
   const handleSubmit = (formData: FormData) => {
     formAction(formData);
+    // Sending counts as activity, so the poll stays on the fast interval
+    // while a conversation is actually happening.
+    lastActivityRef.current = Date.now();
     formRef.current?.reset();
     setAttachmentName(null);
     setReplyTo(null);
