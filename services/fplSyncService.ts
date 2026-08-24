@@ -12,6 +12,29 @@ interface SyncFailure {
   error: string;
 }
 
+export async function linkFplAccount(userId: string, fplEntryId: number) {
+  const manager = await FPLService.getManager(fplEntryId);
+  return prisma.fPLAccount.upsert({
+    where: { userId },
+    create: {
+      userId,
+      fplEntryId,
+      fplTeamName: manager.name,
+      fplManagerName: `${manager.player_first_name} ${manager.player_last_name}`,
+    },
+    update: {
+      fplEntryId,
+      fplTeamName: manager.name,
+      fplManagerName: `${manager.player_first_name} ${manager.player_last_name}`,
+      linkedAt: new Date(),
+    },
+  });
+}
+
+export async function unlinkFplAccount(userId: string) {
+  await prisma.fPLAccount.delete({ where: { userId } });
+}
+
 /**
  * Syncs Game Week points for a Game Week's locked participants. Skips anyone
  * whose current snapshot came from a manual correction (submitManualScore)
