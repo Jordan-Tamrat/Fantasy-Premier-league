@@ -6,17 +6,22 @@ import { signOut } from "next-auth/react";
 import { LogOut, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import type { NavItem } from "@/components/nav-items";
+import { MEMBER_NAV_ITEMS, MEMBER_BOTTOM_NAV_ITEMS, ADMIN_NAV_ITEMS } from "@/components/nav-items";
 
 interface AppShellProps {
-  navItems: NavItem[];
-  bottomNavItems: NavItem[];
+  variant: "member" | "admin";
   userName: string;
   isAdmin: boolean;
   children: React.ReactNode;
 }
 
-export function AppShell({ navItems, bottomNavItems, userName, isAdmin, children }: AppShellProps) {
+// nav item arrays (which include Lucide icon *component references*) are
+// picked here, inside the Client Component, rather than passed in as a prop
+// from the server layout — React Server Components can't serialize function
+// values like a component reference across the server->client boundary.
+export function AppShell({ variant, userName, isAdmin, children }: AppShellProps) {
+  const navItems = variant === "admin" ? ADMIN_NAV_ITEMS : MEMBER_NAV_ITEMS;
+  const bottomNavItems = variant === "admin" ? ADMIN_NAV_ITEMS.slice(0, 4) : MEMBER_BOTTOM_NAV_ITEMS;
   const pathname = usePathname();
   const handleSignOut = () => signOut({ redirectTo: "/login" });
 
