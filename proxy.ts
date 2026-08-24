@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-// Runs on Node (not Edge) since lib/auth.ts's Credentials provider needs
-// Prisma/bcryptjs, neither of which works in the Edge runtime.
+// Next.js's "proxy" convention (formerly middleware.ts) always runs on the
+// Node.js runtime, which is required here since lib/auth.ts's Credentials
+// provider needs Prisma/bcryptjs.
 export const config = {
-  runtime: "nodejs",
   matcher: ["/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
 
