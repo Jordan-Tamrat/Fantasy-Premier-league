@@ -141,11 +141,12 @@ export async function markPrizePaymentPaidAction(
   formData: FormData,
 ) {
   const admin = await requireAdmin();
+  // referenceNumber/notes were dropped from the form — a screenshot is enough.
+  // They stay optional in the schema, so we simply don't pass them (an absent
+  // form field is null, which would fail the string validation).
   const parsed = markPrizePaymentPaidSchema.safeParse({
     prizePaymentId,
     method: formData.get("method"),
-    referenceNumber: formData.get("referenceNumber"),
-    notes: formData.get("notes"),
   });
   if (!parsed.success) return parsed.error.issues[0]?.message ?? "Invalid input";
 
