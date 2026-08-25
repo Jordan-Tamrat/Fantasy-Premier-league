@@ -4,14 +4,19 @@ import { revalidatePath } from "next/cache";
 import { requireUser, requireAdmin } from "@/lib/auth";
 import { proposalSchema, voteSchema } from "@/lib/validations/phase2.schema";
 import { prisma } from "@/lib/prisma";
+import { parseLeagueDateTimeLocal } from "@/lib/datetime";
 import { createProposal, castVote, markProposalImplemented, resolveProposal } from "@/services/proposalService";
 
 export async function createProposalAction(_prevState: string | undefined, formData: FormData) {
   const user = await requireUser();
+  const rawDeadline = formData.get("votingDeadline");
   const parsed = proposalSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description"),
-    votingDeadline: formData.get("votingDeadline"),
+    // The datetime-local field is a bare Addis wall-clock time; convert it to a
+    // real UTC instant before validation, otherwise it's read in the server's
+    // zone and lands 3 hours off.
+    votingDeadline: typeof rawDeadline === "string" ? parseLeagueDateTimeLocal(rawDeadline) : rawDeadline,
   });
   if (!parsed.success) return parsed.error.issues[0]?.message ?? "Invalid input";
   if (parsed.data.votingDeadline <= new Date()) return "The voting deadline must be in the future";
