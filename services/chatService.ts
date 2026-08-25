@@ -24,6 +24,7 @@ export async function listMessages(options?: { before?: Date }) {
     include: {
       sender: { select: { id: true, name: true, role: true, profileImagePath: true } },
       replyTo: { select: { id: true, content: true, sender: { select: { name: true } } } },
+      reactions: { select: { emoji: true, userId: true } },
     },
     orderBy: { createdAt: "desc" },
     take: MESSAGE_PAGE_SIZE + 1,
@@ -41,10 +42,46 @@ export async function listMessagesSince(since: Date) {
     include: {
       sender: { select: { id: true, name: true, role: true, profileImagePath: true } },
       replyTo: { select: { id: true, content: true, sender: { select: { name: true } } } },
+      reactions: { select: { emoji: true, userId: true } },
     },
     orderBy: { createdAt: "asc" },
     take: POLL_BATCH_LIMIT,
   });
+}
+
+/**
+ * Lightweight state for messages the client already holds, so a poll can pick
+ * up changes to *existing* messages — new reactions, a pin/unpin, an edit, a
+ * delete — without reloading the page. Keeps the payload small (no sender/
+ * reply joins) since the client already has those.
+ */
+export async function getMessageUpdates(ids: string[]) {
+  if (ids.length === 0) return [];
+  return prisma.chatMessage.findMany({
+    where: { id: { in: ids } },
+    select: {
+      id: true,
+      content: true,
+      pinnedAt: true,
+      editedAt: true,
+      deletedAt: true,
+      attachmentPath: true,
+      reactions: { select: { emoji: true, userId: true } },
+    },
+  });
+}
+
+/** Adds the emoji if the user hasn't used it on this message, else removes it. */
+export async function toggleReaction(messageId: string, userId: string, emoji: string) {
+  const existing = await prisma.chatMessageReaction.findUnique({
+    where: { messageId_userId_emoji: { messageId, userId, emoji } },
+  });
+  if (existing) {
+    await prisma.chatMessageReaction.delete({ where: { id: existing.id } });
+    return { reacted: false };
+  }
+  await prisma.chatMessageReaction.create({ data: { messageId, userId, emoji } });
+  return { reacted: true };
 }
 
 export async function listPinnedMessages() {

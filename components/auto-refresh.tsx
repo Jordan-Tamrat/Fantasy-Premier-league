@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 /**
  * Keeps a server-rendered page fresh without the user pressing refresh.
@@ -18,8 +18,13 @@ import { useRouter } from "next/navigation";
  */
 export function AutoRefresh({ intervalMs = 20000 }: { intervalMs?: number }) {
   const router = useRouter();
+  const pathname = usePathname();
+  // Chat runs its own tighter polling loop, so a route-level refresh there is
+  // pure waste — skip it and let the chat client keep itself current.
+  const enabled = !pathname.startsWith("/chat");
 
   useEffect(() => {
+    if (!enabled) return;
     const refresh = () => {
       if (!document.hidden) router.refresh();
     };
@@ -36,7 +41,7 @@ export function AutoRefresh({ intervalMs = 20000 }: { intervalMs?: number }) {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", refresh);
     };
-  }, [router, intervalMs]);
+  }, [router, intervalMs, enabled]);
 
   return null;
 }

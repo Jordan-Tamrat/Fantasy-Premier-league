@@ -87,6 +87,7 @@ model User {
 
   chatMessages      ChatMessage[]  @relation("MessageSender")
   deletedMessages   ChatMessage[]  @relation("MessageDeleter")
+  chatReactions     ChatMessageReaction[]
   announcements     Announcement[]
   notifications     Notification[]
   proposals         Proposal[]
@@ -312,8 +313,26 @@ model ChatMessage {
   deletedBy      User?       @relation("MessageDeleter", fields: [deletedById], references: [id])
   createdAt      DateTime    @default(now())
 
+  reactions      ChatMessageReaction[]
+
   @@index([createdAt])
   @@index([pinnedAt])
+}
+
+model ChatMessageReaction {
+  id        String      @id @default(cuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  emoji     String
+  createdAt DateTime    @default(now())
+
+  // One row per (message, user, emoji): a person can add several different
+  // emojis to a message, but the same emoji only once — so toggling is a
+  // create-or-delete on this unique key.
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }
 
 model Announcement {

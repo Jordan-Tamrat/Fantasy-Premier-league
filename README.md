@@ -1,143 +1,66 @@
-# Fantasy Money League
+# Ethiosinia Fantasy Premier League
 
-A private Fantasy Premier League money-competition platform for a small group of friends. Replaces a Telegram-based workflow (payments, verification, winner calculation, payouts) with one app.
+A private Fantasy Premier League money league for a group of friends. It replaces a Telegram workflow — entry fees, payment screenshots, working out winners, paying out prizes — with one app that runs the weekly cycle and keeps an auditable record.
 
-**Phase 1** built the money loop: invite-only accounts, Game Week lifecycle, payment verification, the prize/tie-splitting engine, FPL score syncing, transparency/history, and admin tooling.
+Built for one admin and ~20–25 members. Optimised for correctness (real money) and mobile, not scale.
 
-**Phase 2** replaced the rest of Telegram: a league chat (text, image attachments, replies, pinned and system messages), announcements, in-app notifications, database-backed rules, rule proposals with one-member-one-vote, and a dispute system.
+## Features
 
-## How the money math works
-
-Every Game Week: only members with a payment **verified by the admin before the payment deadline** become participants — registering is not the same as participating. Once the deadline passes, that participant list is locked and snapshotted forever, independent of anything that happens to `Payment` rows afterward.
-
-Prizes are **custom**: the admin sets an amount for 1st/2nd/3rd (or however many positions), and the total can never exceed what was actually collected. Ranking uses each Game Week's FPL points only — never season totals. Ties use standard competition ranking: two people tied for 1st split the 1st+2nd prize pool 50/50 and the next distinct rank is 3rd, not 2nd. Money is `Decimal`, never JS floats, and every remainder cent is deterministically assigned so nothing is ever silently lost. See `services/prizeEngine.ts` and its test suite (`services/prizeEngine.test.ts`) for the exact algorithm and the spec's worked examples (2-way/3-way/4-way ties).
+- **Money loop** — invite-only accounts, full Game Week lifecycle, payment verification, a custom prize engine with exact tie-splitting, FPL score syncing, prize payouts, leaderboard and history.
+- **League** — real-time chat (images, replies, reactions, pins), announcements, notifications, rules, rule proposals with one-member-one-vote, and disputes.
+- **Admin** — payment/prize controls, member and invite management, FPL sync, league settings, and a full audit log.
 
 ## Tech stack
 
-Next.js 16 (App Router) · TypeScript (strict) · Tailwind CSS + shadcn/ui (built on Base UI) · PostgreSQL via Supabase + Prisma 7 · Auth.js v5 (Credentials + JWT sessions, no OAuth) · Supabase Storage for payment/prize-payment screenshots · Zod validation · Vercel Cron for scheduled Game Week transitions and FPL syncing · Vitest for the prize-engine test suite.
+Next.js 16 (App Router) · TypeScript · Tailwind + shadcn/ui · Supabase Postgres via Prisma 7 · Auth.js v5 (Credentials + JWT) · Supabase Storage · Zod · Vitest. Dates display in Africa/Addis_Ababa.
 
-This is a small, self-run project (~20-25 friends, one admin) — the architecture deliberately skips things that only matter at larger scale: no Redis/queue, no distributed-lock/race-condition machinery (an admin clicking a button twice is handled with a plain status check, not optimistic-concurrency plumbing), no generic "correction framework" (just a couple of specific, always-audited actions for the realistic cases).
+## Architecture (the parts worth knowing)
 
-## Project layout
+- **Money math** — only payments verified before the deadline count; that list is snapshotted immutably at lock time. Prizes can't exceed what's collected, ranking uses each Game Week's FPL points, ties use competition ranking, and money is integer-cent `Decimal` (no floats). A cancelled Game Week is a refund and never counts against a member. The engine is pure and unit-tested: [`services/prizeEngine.ts`](services/prizeEngine.ts).
+- **Private files** — payment/prize/chat/avatar images live in private buckets. Pages link to `/api/attachments/{kind}/{id}`, which authorizes the record then redirects to a signed URL, so listing 50 items costs zero Storage calls.
+- **Thin actions, real services** — `actions.ts` files do auth + Zod + a call into `services/`; all business logic lives in `services/` (framework-agnostic, testable).
+- **Chat by polling** — one request every 4s (backing off when idle, skipping hidden tabs) returns new messages and refreshed reaction/pin state. Plenty for this size; Supabase Realtime is the upgrade path.
+
+## Structure
 
 ```
-prisma/schema.prisma      Database schema
-prisma/seed.ts            Demo data (admin + 8 members, a completed Game Week with a tie, rules, a live vote, chat)
-lib/prisma.ts             Prisma client (pg driver adapter, pooled connection)
-lib/auth.ts               Auth.js config + requireUser()/requireAdmin() guards
-lib/money.ts              Decimal/cents helpers (decimal.js — deliberately not Prisma's re-export, see below)
-lib/storage.ts            Supabase Storage: upload + signed URL minting
-app/api/attachments/      Authenticated proxy for private files (see note below)
-lib/fpl/                  FPLService — the only code that knows FPL's API endpoints
-lib/validations/          Zod schemas
-services/                 Business logic (prize engine, lock/finalize, payments, chat, proposals, ...)
-app/(auth)/               /login, /invite/[token] — public
-app/(member)/             /dashboard, /gameweeks, /chat, /rules, /proposals, /disputes, ... — signed-in
-app/(admin)/admin/        Game Weeks, members, announcements, rules, disputes, settings — admin only
-app/api/cron/             Scheduled jobs, protected by CRON_SECRET (not user sessions)
+prisma/       schema, migrations, seed
+lib/          prisma, auth, money, datetime, storage, fpl/, validations/
+services/     business logic (prize engine, lock/finalize, payments, chat, ...)
+components/   shared UI
+app/(auth)/   /login, /invite — public
+app/(member)/ dashboard, gameweeks, chat, leaderboard, proposals, ... — signed-in
+app/(admin)/  admin-only pages
+app/api/      attachments proxy, cron routes
 ```
 
-**Private files** (payment proofs, prize proofs, chat images) are never linked as signed Supabase URLs from a page. Pages link to `/api/attachments/{chat|payment|prize}/{id}`, which checks the session, authorizes the specific record, and redirects to a freshly minted signed URL. That keeps authorization in one place and means rendering a list of 50 messages or payments costs zero Storage API calls — a URL is only minted when a browser actually loads the image.
+## Getting started
 
-Server actions live as `actions.ts` next to the route that uses them and stay thin: auth guard, Zod parse, call into `services/`. Business logic itself is framework-agnostic and lives in `services/`, not in components — `services/prizeEngine.ts` in particular has zero I/O, which is what makes it fully unit-testable.
-
-## Setup
-
-### 1. Install dependencies
+Prerequisites: Node 20+ and a free [Supabase](https://supabase.com) project.
 
 ```bash
 npm install
-```
-
-### 2. Create a Supabase project
-
-You need a free project at [supabase.com](https://supabase.com) for Postgres + file storage:
-
-1. Create the project.
-2. **Database → Connection string**: copy both the pooled connection (port 6543, `?pgbouncer=true`) and the direct connection (port 5432).
-3. **Storage**: create four **private** buckets: `payment-proofs`, `prize-payment-proofs`, `chat-attachments`, and `profile-images`.
-4. **Settings → API**: copy the project URL, anon key, and service role key.
-
-### 3. Configure environment variables
-
-```bash
-cp .env.example .env
-```
-
-Fill in `DATABASE_URL` (pooled) and `DIRECT_URL` (direct — used only for migrations, since Supabase's pooler can't create the shadow database migrations need), the Supabase keys, and generate an auth secret:
-
-```bash
-npx auth secret
-```
-
-Also set `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` — the seed script uses these to create your first admin account, since signup is invite-only and there's no other way to bootstrap it.
-
-### 4. Set up the database
-
-```bash
-npx prisma migrate dev --name init
+cp .env.example .env          # then fill it in (see below)
+npx prisma migrate dev
 npm run db:seed
-```
-
-### 5. Run it
-
-```bash
 npm run dev
 ```
 
-Sign in with your `ADMIN_EMAIL`/`ADMIN_PASSWORD`, or as a demo member (`mube@demo.local` / `password123`, etc. — see `prisma/seed.ts` for the full list).
+In Supabase: copy the pooled (`6543`) and direct (`5432`) connection strings, create four **private** Storage buckets (`payment-proofs`, `prize-payment-proofs`, `chat-attachments`, `profile-images`), and grab the project URL + service-role key. Fill these into `.env` (see `.env.example`), generate `AUTH_SECRET` with `npx auth secret`, and set `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` — the seed script creates the first admin, since signup is invite-only.
 
-## Commands
+Sign in as that admin, or a demo member (`mube@demo.local` / `password123` — see [`prisma/seed.ts`](prisma/seed.ts)).
+
+## Scripts
 
 ```bash
-npm run dev          # local dev server
-npm run build        # production build
-npm run typecheck    # tsc --noEmit
-npm run lint         # eslint
-npm run test         # vitest (prize engine test suite)
-npm run db:migrate   # prisma migrate dev
-npm run db:seed      # prisma db seed
+npm run dev | build | start | lint | typecheck | test
+npm run db:migrate | db:seed
 ```
 
 ## Deployment (Vercel)
 
-1. Import the repo into Vercel, set the same environment variables as `.env.example` (plus `AUTH_URL` = your production URL and a random `CRON_SECRET`).
-2. Run `npx prisma migrate deploy` against production (via a one-off job, or locally pointed at the production `DIRECT_URL`) before first deploy.
+Import the repo, set the `.env.example` variables plus `AUTH_URL` and `CRON_SECRET`, and run `npx prisma migrate deploy` against production once. Scheduled Game Week transitions and FPL sync run via GitHub Actions ([`.github/workflows/cron.yml`](.github/workflows/cron.yml)) — add `APP_URL` and `CRON_SECRET` repo secrets. Every scheduled step also has a manual button, so a late run never blocks anything.
 
-### Scheduled jobs
+## Testing
 
-Vercel's Hobby plan caps cron at once a day, which is too coarse for Game Week
-transitions and FPL syncing. The real schedule is a **GitHub Actions**
-workflow (`.github/workflows/cron.yml`), running every 5 minutes — free and
-unlimited on a public repo. `vercel.json` still declares the same two jobs
-once a day as a backstop, in case the workflow ever gets disabled by GitHub's
-60-day-inactivity rule.
-
-To enable it, add two repository secrets (GitHub repo → Settings → Secrets
-and variables → Actions):
-
-- `APP_URL` — your production URL (e.g. `https://your-app.vercel.app`)
-- `CRON_SECRET` — the same value as the `CRON_SECRET` env var on Vercel
-
-Both `/api/cron/*` routes check `Authorization: Bearer $CRON_SECRET`
-regardless of who calls them — Vercel's own cron sends this header
-automatically when `CRON_SECRET` is set as an env var, and the GitHub Actions
-workflow sends it explicitly.
-
-GitHub Actions doesn't guarantee exact timing either — occasional delays of
-10-30 minutes are normal, worse during peak load. That's fine for what these
-jobs do (refresh cached FPL scores, close out a deadline a little after it
-passes) — none of it needs to-the-minute precision. Every lifecycle step
-(open, close payments, lock, finalize, sync) also has a manual button in
-`/admin/gameweeks/[id]` that does the same thing instantly, and rule
-proposals have a manual "Tally votes now" fallback once their deadline has
-passed — so nothing is actually blocked if a scheduled run is late or missed.
-
-## Known limitations / next steps
-
-- **`lockGameWeek`/`finalizeResults` tests run against the real dev database**, not a mock — `npm run test` will create and delete real rows (a few test users, one Game Week) while it runs. Every test cleans up fully in `afterEach`, including the system chat messages and notifications those functions fan out to every member (see `services/gameWeekTestFixtures.ts`). Safe to run repeatedly, but don't point `DATABASE_URL` at production when running tests.
-- **No email delivery** — invite links are shown to the admin to share manually (WhatsApp, SMS, etc.) rather than emailed. Notifications are in-app only.
-- **Chat updates by polling, not websockets** — the client asks for new messages every 4 seconds while a conversation is active, backing off to 20 seconds once it's been quiet for two minutes, and skipping the request entirely while the tab is hidden. For ~20 members this is fine and avoids bridging NextAuth sessions into Supabase Realtime's row-level-security model (a second auth system to keep in sync). If concurrent viewers ever reach the high tens, Supabase Realtime is the upgrade path.
-- **No "load older messages"** — the chat shows the most recent 50. `listMessages()` already takes a `before` cursor, so adding a scroll-back button is small, but the UI doesn't call it yet.
-- **Chat has no reactions, typing indicators, or presence** — deliberately scoped to what the league actually needs (send, reply, attach an image, pin, delete).
-- **`npm audit` reports a high-severity advisory in `deepmerge-ts`**, a transitive dependency of Prisma's own CLI config loader (not reachable from application code — it only processes `prisma.config.ts`, which we author). No fix is available yet without downgrading Prisma or using an unstable release candidate; left as-is and worth revisiting when Prisma patches it.
+`npm run test`. The prize engine is pure and tested thoroughly; the lock/finalize tests hit the real dev database and clean up after themselves — never point `DATABASE_URL` at production while testing.

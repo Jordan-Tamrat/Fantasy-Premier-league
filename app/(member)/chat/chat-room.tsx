@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
-import { ImagePlus, Send, Pin, Trash2, CornerUpLeft, X } from "lucide-react";
+import { ImagePlus, Send, Pin, Trash2, CornerUpLeft, X, SmilePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/rank-badge";
 import { cn } from "@/lib/utils";
@@ -13,10 +13,14 @@ import {
   sendMessageAction,
   deleteMessageAction,
   togglePinAction,
-  fetchNewMessagesAction,
+  fetchChatSyncAction,
   fetchOlderMessagesAction,
+  toggleReactionAction,
 } from "./actions";
-import type { ChatMessageView } from "./message-view";
+import type { ChatMessageView, ReactionView } from "./message-view";
+
+// The quick-reaction palette shown when you tap the react button.
+const QUICK_EMOJIS = ["👍", "❤️", "😂", "🔥", "🎉", "😮"];
 
 // Live updates by polling rather than websockets: for a private league of ~20
 // this is entirely adequate and avoids bridging NextAuth sessions into
@@ -76,14 +80,21 @@ export function ChatRoom({
       if (!document.hidden) {
         const latest = messagesRef.current[messagesRef.current.length - 1];
         const since = latest?.createdAt ?? new Date(0).toISOString();
+        const ids = messagesRef.current.map((m) => m.id);
         try {
-          const incoming = await fetchNewMessagesAction(since);
-          if (incoming.length > 0 && !cancelled) {
+          // One request pulls both new messages and refreshed state (reactions,
+          // pins, edits, deletions) for messages already on screen.
+          const { newMessages, updates } = await fetchChatSyncAction(since, ids);
+          if (newMessages.length > 0 && !cancelled) {
             lastActivityRef.current = Date.now();
             setMessages((prev) => {
               const known = new Set(prev.map((m) => m.id));
-              return [...prev, ...incoming.filter((m) => !known.has(m.id))];
+              return [...prev, ...newMessages.filter((m) => !known.has(m.id))];
             });
+          }
+          if (updates.length > 0 && !cancelled) {
+            const byId = new Map(updates.map((u) => [u.id, u]));
+            setMessages((prev) => prev.map((m) => (byId.has(m.id) ? { ...m, ...byId.get(m.id)! } : m)));
           }
         } catch {
           // A failed poll is not worth surfacing — the next tick retries.
@@ -186,6 +197,30 @@ export function ChatRoom({
     setAttachmentName(optimized.name);
   };
 
+  // Toggle a reaction optimistically (instant feedback), then persist. The
+  // poll reconciles with everyone else's reactions on the next tick.
+  const handleToggleReaction = (messageId: string, emoji: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId) return m;
+        const existing = m.reactions.find((r) => r.emoji === emoji);
+        let reactions: ReactionView[];
+        if (!existing) {
+          reactions = [...m.reactions, { emoji, count: 1, mine: true }];
+        } else if (existing.mine) {
+          reactions =
+            existing.count <= 1
+              ? m.reactions.filter((r) => r.emoji !== emoji)
+              : m.reactions.map((r) => (r.emoji === emoji ? { ...r, count: r.count - 1, mine: false } : r));
+        } else {
+          reactions = m.reactions.map((r) => (r.emoji === emoji ? { ...r, count: r.count + 1, mine: true } : r));
+        }
+        return { ...m, reactions };
+      }),
+    );
+    startTransition(() => void toggleReactionAction(messageId, emoji));
+  };
+
   const pinned = messages.filter((m) => m.isPinned && !m.isDeleted);
 
   return (
@@ -197,7 +232,7 @@ export function ChatRoom({
         <div className="shrink-0 border-b bg-[var(--fpl-cyan)]/8 px-4 py-2">
           {pinned.map((m) => (
             <p key={m.id} className="flex items-center gap-2 truncate text-xs">
-              <Pin className="size-3 shrink-0" />
+              <Pin className="size-3 shrink-0 fill-current text-[var(--fpl-cyan)]" />
               <span className="font-semibold">{m.senderName}:</span> {m.content}
             </p>
           ))}
@@ -240,6 +275,7 @@ export function ChatRoom({
                 onReply={() => setReplyTo(message)}
                 onDelete={() => startTransition(() => void deleteMessageAction(message.id))}
                 onTogglePin={() => startTransition(() => void togglePinAction(message.id, !message.isPinned))}
+                onToggleReaction={(emoji) => handleToggleReaction(message.id, emoji)}
               />
             </div>
           );
@@ -318,6 +354,7 @@ function MessageBubble({
   onReply,
   onDelete,
   onTogglePin,
+  onToggleReaction,
 }: {
   message: ChatMessageView;
   isOwn: boolean;
@@ -325,7 +362,10 @@ function MessageBubble({
   onReply: () => void;
   onDelete: () => void;
   onTogglePin: () => void;
+  onToggleReaction: (emoji: string) => void;
 }) {
+  const [showPicker, setShowPicker] = useState(false);
+
   if (message.type === "SYSTEM") {
     return (
       <p className="mx-auto max-w-md whitespace-pre-line rounded-full bg-secondary px-4 py-1.5 text-center text-xs font-medium text-secondary-foreground">
@@ -339,6 +379,11 @@ function MessageBubble({
       <p className={cn("text-xs italic text-muted-foreground", isOwn && "text-right")}>Message deleted</p>
     );
   }
+
+  const pickReaction = (emoji: string) => {
+    onToggleReaction(emoji);
+    setShowPicker(false);
+  };
 
   return (
     <div className={cn("group flex items-end gap-2", isOwn ? "flex-row-reverse" : "flex-row")}>
@@ -374,18 +419,63 @@ function MessageBubble({
             </a>
           )}
           {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
-          <p className={cn("mt-0.5 text-[10px]", isOwn ? "text-primary-foreground/60" : "text-muted-foreground")}>
+          <p className={cn("mt-0.5 flex items-center gap-1 text-[10px]", isOwn ? "text-primary-foreground/60" : "text-muted-foreground")}>
+            {message.isPinned && <Pin className="size-2.5 fill-current text-[var(--fpl-cyan)]" />}
             {formatTime(message.createdAt)}
             {message.isEdited && " · edited"}
           </p>
         </div>
-        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+
+        {message.reactions.length > 0 && (
+          <div className={cn("flex flex-wrap gap-1", isOwn ? "justify-end" : "justify-start")}>
+            {message.reactions.map((r) => (
+              <button
+                key={r.emoji}
+                type="button"
+                onClick={() => onToggleReaction(r.emoji)}
+                className={cn(
+                  "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors",
+                  r.mine
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted",
+                )}
+                aria-label={`${r.emoji} ${r.count}${r.mine ? " (you reacted)" : ""}`}
+              >
+                <span>{r.emoji}</span>
+                <span className="font-semibold tabular-nums">{r.count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {showPicker && (
+          <div className="flex gap-1 rounded-full border bg-card px-2 py-1 shadow-sm">
+            {QUICK_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => pickReaction(emoji)}
+                className="rounded-full px-1 text-lg transition-transform hover:scale-125"
+                aria-label={`React ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Actions stay visible on touch (no hover on mobile) and reveal on
+            hover on desktop. */}
+        <div className="flex gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+          <IconAction onClick={() => setShowPicker((v) => !v)} label="React">
+            <SmilePlus className="size-3" />
+          </IconAction>
           <IconAction onClick={onReply} label="Reply">
             <CornerUpLeft className="size-3" />
           </IconAction>
           {isAdmin && (
             <IconAction onClick={onTogglePin} label={message.isPinned ? "Unpin" : "Pin"}>
-              <Pin className="size-3" />
+              <Pin className={cn("size-3", message.isPinned && "fill-current text-[var(--fpl-cyan)]")} />
             </IconAction>
           )}
           {(isOwn || isAdmin) && (

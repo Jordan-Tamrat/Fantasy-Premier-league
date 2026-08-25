@@ -3,9 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { sendMessageSchema } from "@/lib/validations/phase2.schema";
-import { sendMessage, deleteMessage, setMessagePinned, listMessagesSince, listMessages } from "@/services/chatService";
-import { toChatMessageView } from "./to-view";
-import type { ChatMessageView } from "./message-view";
+import {
+  sendMessage,
+  deleteMessage,
+  setMessagePinned,
+  listMessagesSince,
+  listMessages,
+  getMessageUpdates,
+  toggleReaction,
+} from "@/services/chatService";
+import { toChatMessageView, toChatMessageUpdate } from "./to-view";
+import type { ChatMessageView, ChatMessageUpdate } from "./message-view";
 
 export async function sendMessageAction(_prevState: string | undefined, formData: FormData) {
   const user = await requireUser();
@@ -46,22 +54,43 @@ export async function togglePinAction(messageId: string, pinned: boolean) {
   revalidatePath("/chat");
 }
 
-/** Polled by the chat client to pick up messages sent by other members. */
-export async function fetchNewMessagesAction(sinceIso: string): Promise<ChatMessageView[]> {
-  await requireUser();
+/**
+ * One poll = one request: fetches messages newer than `sinceIso` AND refreshed
+ * state (reactions/pins/edits/deletes) for the messages already on screen, in a
+ * single round trip with the two DB queries run in parallel. Merging these
+ * halves the serverless invocations and DB round-trips the chat makes per tick,
+ * which keeps the 4-second polling comfortably within Vercel/Supabase free
+ * tiers for a small league.
+ */
+export async function fetchChatSyncAction(
+  sinceIso: string,
+  ids: string[],
+): Promise<{ newMessages: ChatMessageView[]; updates: ChatMessageUpdate[] }> {
+  const user = await requireUser();
   const since = new Date(sinceIso);
-  if (Number.isNaN(since.getTime())) return [];
-  const messages = await listMessagesSince(since);
-  return messages.map(toChatMessageView);
+  const [newRows, updateRows] = await Promise.all([
+    Number.isNaN(since.getTime()) ? Promise.resolve([]) : listMessagesSince(since),
+    ids.length > 0 ? getMessageUpdates(ids) : Promise.resolve([]),
+  ]);
+  return {
+    newMessages: newRows.map((m) => toChatMessageView(m, user.id)),
+    updates: updateRows.map((r) => toChatMessageUpdate(r, user.id)),
+  };
 }
 
 /** Walks backwards through history for the "Load older messages" button. */
 export async function fetchOlderMessagesAction(
   beforeIso: string,
 ): Promise<{ messages: ChatMessageView[]; hasMore: boolean }> {
-  await requireUser();
+  const user = await requireUser();
   const before = new Date(beforeIso);
   if (Number.isNaN(before.getTime())) return { messages: [], hasMore: false };
   const { messages, hasMore } = await listMessages({ before });
-  return { messages: messages.map(toChatMessageView), hasMore };
+  return { messages: messages.map((m) => toChatMessageView(m, user.id)), hasMore };
+}
+
+/** Toggles the current user's emoji reaction on a message. */
+export async function toggleReactionAction(messageId: string, emoji: string): Promise<void> {
+  const user = await requireUser();
+  await toggleReaction(messageId, user.id, emoji);
 }

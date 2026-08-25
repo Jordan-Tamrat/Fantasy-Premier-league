@@ -9,7 +9,7 @@ export default async function ChatPage() {
 
   return (
     <ChatRoom
-      initialMessages={messages.map(toChatMessageView)}
+      initialMessages={messages.map((m) => toChatMessageView(m, user.id))}
       initialHasMore={hasMore}
       currentUserId={user.id}
       isAdmin={user.role === "ADMIN"}
