@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState, useRef, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/uploadLimits";
+import { compressImage } from "@/lib/image-compress";
 import {
   updateProfileAction,
   updateProfilePictureAction,
@@ -15,15 +17,37 @@ import {
 
 export function ProfilePictureForm({ name, imageUrl }: { name: string; imageUrl: string | null }) {
   const [error, formAction, isPending] = useActionState(updateProfilePictureAction, undefined);
+  const [sizeError, setSizeError] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <form
       action={formAction}
-      onChange={() => {
-        const form = inputRef.current?.form;
-        if (form) startTransition(() => formAction(new FormData(form)));
+      onChange={async (e) => {
+        const input = e.target as unknown as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) return;
+        setSizeError(null);
+
+        // Profile pictures only ever need to look good at avatar size, so
+        // downscale + re-encode client-side rather than rejecting a normal
+        // phone photo outright — a 4000x3000 camera shot easily lands well
+        // under the limit once resized to 512px.
+        setIsCompressing(true);
+        const optimized = await compressImage(file, { maxDimension: 512, quality: 0.85 });
+        setIsCompressing(false);
+
+        if (optimized.size > MAX_UPLOAD_BYTES) {
+          setSizeError(`Image is too large (max ${MAX_UPLOAD_MB}MB).`);
+          input.value = "";
+          return;
+        }
+
+        const formData = new FormData();
+        formData.set("image", optimized);
+        startTransition(() => formAction(formData));
       }}
     >
       <label htmlFor="image" className="group relative block size-16 cursor-pointer">
@@ -46,7 +70,9 @@ export function ProfilePictureForm({ name, imageUrl }: { name: string; imageUrl:
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
       />
+      {isCompressing && <p className="mt-1 text-xs text-white/70">Optimizing…</p>}
       {isPending && <p className="mt-1 text-xs text-white/70">Uploading…</p>}
+      {sizeError && <p className="mt-1 text-xs text-[var(--fpl-pink)]">{sizeError}</p>}
       {error && <p className="mt-1 text-xs text-[var(--fpl-pink)]">{error}</p>}
     </form>
   );

@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, ALLOWED_IMAGE_TYPES } from "@/lib/uploadLimits";
 
 // Service-role client: server-only, never imported into client components.
 // Buckets are private — proofs are only ever reached through a signed URL
@@ -25,9 +26,6 @@ export const STORAGE_BUCKETS = {
 
 export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS];
 
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
-
 export function buildProofPath(gameWeekId: string, userId: string, filename: string): string {
   const safeName = filename.replace(/[^a-zA-Z0-9.\-_]/g, "_");
   return `${gameWeekId}/${userId}/${Date.now()}-${safeName}`;
@@ -38,7 +36,7 @@ export async function uploadProofImage(bucket: StorageBucket, path: string, file
     throw new Error("Only PNG, JPEG, or WEBP screenshots are accepted.");
   }
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("File is too large (max 5MB).");
+    throw new Error(`File is too large (max ${MAX_UPLOAD_MB}MB).`);
   }
   const { error } = await getSupabaseAdmin().storage.from(bucket).upload(path, file, {
     upsert: false,

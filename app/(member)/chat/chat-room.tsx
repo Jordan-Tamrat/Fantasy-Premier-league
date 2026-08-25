@@ -6,6 +6,8 @@ import { ImagePlus, Send, Pin, Trash2, CornerUpLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/rank-badge";
 import { cn } from "@/lib/utils";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/uploadLimits";
+import { compressImage } from "@/lib/image-compress";
 import {
   sendMessageAction,
   deleteMessageAction,
@@ -42,6 +44,8 @@ export function ChatRoom({
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessageView | null>(null);
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [isCompressingAttachment, setIsCompressingAttachment] = useState(false);
   const [error, formAction, isPending] = useActionState(sendMessageAction, undefined);
   const [, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
@@ -144,7 +148,41 @@ export function ChatRoom({
     lastActivityRef.current = Date.now();
     formRef.current?.reset();
     setAttachmentName(null);
+    setAttachmentError(null);
     setReplyTo(null);
+  };
+
+  const handleAttachmentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const file = input.files?.[0];
+    if (!file) {
+      setAttachmentName(null);
+      setAttachmentError(null);
+      return;
+    }
+    setAttachmentError(null);
+
+    // Chat photos still need to read as a real image (unlike an avatar), so
+    // this uses a milder resize than the profile picture — big enough to
+    // keep text/detail legible, small enough that a full-res camera shot
+    // doesn't blow past the upload limit.
+    setIsCompressingAttachment(true);
+    const optimized = await compressImage(file, { maxDimension: 1600, quality: 0.85 });
+    setIsCompressingAttachment(false);
+
+    if (optimized.size > MAX_UPLOAD_BYTES) {
+      setAttachmentError(`Image is too large (max ${MAX_UPLOAD_MB}MB).`);
+      setAttachmentName(null);
+      input.value = "";
+      return;
+    }
+
+    // Swap the input's FileList so the form submits the optimized file
+    // instead of the original the user picked.
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(optimized);
+    input.files = dataTransfer.files;
+    setAttachmentName(optimized.name);
   };
 
   const pinned = messages.filter((m) => m.isPinned && !m.isDeleted);
@@ -206,9 +244,13 @@ export function ChatRoom({
           </div>
         )}
         <input type="hidden" name="replyToId" value={replyTo?.id ?? ""} />
-        {attachmentName && (
+        {isCompressingAttachment && (
+          <p className="mb-2 rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground">Optimizing image…</p>
+        )}
+        {attachmentName && !isCompressingAttachment && (
           <p className="mb-2 truncate rounded-lg bg-muted px-3 py-1.5 text-xs">📎 {attachmentName}</p>
         )}
+        {attachmentError && <p className="mb-2 text-xs text-destructive">{attachmentError}</p>}
         <div className="flex items-end gap-2">
           <label
             htmlFor="attachment"
@@ -223,7 +265,7 @@ export function ChatRoom({
             type="file"
             accept="image/png,image/jpeg,image/webp"
             className="hidden"
-            onChange={(e) => setAttachmentName(e.target.files?.[0]?.name ?? null)}
+            onChange={handleAttachmentChange}
           />
           <textarea
             name="content"
@@ -237,7 +279,13 @@ export function ChatRoom({
               }
             }}
           />
-          <Button type="submit" size="icon-lg" className="shrink-0 rounded-full" disabled={isPending} aria-label="Send">
+          <Button
+            type="submit"
+            size="icon-lg"
+            className="shrink-0 rounded-full"
+            disabled={isPending || isCompressingAttachment}
+            aria-label="Send"
+          >
             <Send className="size-4" />
           </Button>
         </div>

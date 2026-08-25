@@ -17,6 +17,13 @@ interface CreateGameWeekInput {
   announcement?: string;
 }
 
+/**
+ * fplEventId is unique in the schema, so re-creating a Game Week for the same
+ * FPL Game Week number would normally hit a DB constraint error — including
+ * after an admin cancels one and changes their mind. Instead, a CANCELLED
+ * Game Week for that event is reopened in place (reset to DRAFT with the new
+ * config) rather than blocked; any other status is a genuine duplicate.
+ */
 export async function createGameWeek(input: CreateGameWeekInput, actor: Actor) {
   const fplEvent = await FPLService.getEventById(input.fplEventId);
   if (!fplEvent) throw new Error(`FPL Game Week ${input.fplEventId} was not found`);
@@ -24,22 +31,47 @@ export async function createGameWeek(input: CreateGameWeekInput, actor: Actor) {
   const fplDeadline = new Date(fplEvent.deadline_time);
   const paymentDeadline = new Date(fplDeadline.getTime() - input.paymentDeadlineOffsetHours * 60 * 60 * 1000);
 
-  const gameWeek = await prisma.gameWeek.create({
-    data: {
-      fplEventId: input.fplEventId,
-      entryFee: decimal(input.entryFee),
-      minParticipants: input.minParticipants,
-      paymentDeadlineOffsetHours: input.paymentDeadlineOffsetHours,
-      fplDeadline,
-      paymentDeadline,
-      announcement: input.announcement,
-      status: "DRAFT",
-    },
-  });
+  const existing = await prisma.gameWeek.findUnique({ where: { fplEventId: input.fplEventId } });
+  if (existing && existing.status !== "CANCELLED") {
+    throw new Error(`Game Week ${input.fplEventId} already exists (status: ${existing.status})`);
+  }
+
+  const gameWeek = existing
+    ? await prisma.$transaction(async (tx) => {
+        await tx.prizePosition.deleteMany({ where: { gameWeekId: existing.id } });
+        return tx.gameWeek.update({
+          where: { id: existing.id },
+          data: {
+            status: "DRAFT",
+            entryFee: decimal(input.entryFee),
+            minParticipants: input.minParticipants,
+            paymentDeadlineOffsetHours: input.paymentDeadlineOffsetHours,
+            fplDeadline,
+            paymentDeadline,
+            announcement: input.announcement,
+            lockedAt: null,
+            prizeConfigFrozenAt: null,
+            collectedAmountSnapshot: null,
+            finalizedAt: null,
+          },
+        });
+      })
+    : await prisma.gameWeek.create({
+        data: {
+          fplEventId: input.fplEventId,
+          entryFee: decimal(input.entryFee),
+          minParticipants: input.minParticipants,
+          paymentDeadlineOffsetHours: input.paymentDeadlineOffsetHours,
+          fplDeadline,
+          paymentDeadline,
+          announcement: input.announcement,
+          status: "DRAFT",
+        },
+      });
 
   await writeAuditLog(prisma, {
     actorUserId: actor.userId,
-    action: "GAMEWEEK_CREATED",
+    action: existing ? "GAMEWEEK_REOPENED" : "GAMEWEEK_CREATED",
     entityType: "GameWeek",
     entityId: gameWeek.id,
     newValue: { fplEventId: input.fplEventId, entryFee: input.entryFee },

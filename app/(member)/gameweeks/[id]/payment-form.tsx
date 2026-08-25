@@ -5,6 +5,7 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/uploadLimits";
 import { submitPaymentAction } from "./actions";
 
 export function PaymentForm({ gameWeekId }: { gameWeekId: string }) {
@@ -12,6 +13,7 @@ export function PaymentForm({ gameWeekId }: { gameWeekId: string }) {
   const [error, formAction, isPending] = useActionState(action, undefined);
   const [method, setMethod] = useState<"TELEBIRR" | "CBE">("TELEBIRR");
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -52,9 +54,20 @@ export function PaymentForm({ gameWeekId }: { gameWeekId: string }) {
           accept="image/png,image/jpeg,image/webp"
           required
           className="hidden"
-          onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file && file.size > MAX_UPLOAD_BYTES) {
+              setFileError(`Image is too large (max ${MAX_UPLOAD_MB}MB).`);
+              setFileName(null);
+              e.target.value = "";
+              return;
+            }
+            setFileError(null);
+            setFileName(file?.name ?? null);
+          }}
         />
       </div>
+      {fileError && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{fileError}</p>}
       {error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
       <Button type="submit" size="lg" className="w-full font-bold" disabled={isPending}>
         {isPending ? "Submitting…" : "Submit payment"}
