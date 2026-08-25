@@ -3,7 +3,7 @@ import { listProposals, tallyVotes } from "@/services/proposalService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { NewProposalForm, VoteButtons, MarkImplementedButton } from "./proposal-forms";
+import { NewProposalForm, VoteButtons, MarkImplementedButton, ResolveNowButton } from "./proposal-forms";
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   OPEN: "default",
@@ -32,6 +32,7 @@ export default async function ProposalsPage() {
             const tally = tallyVotes(proposal.votes);
             const myVote = proposal.votes.find((v) => v.userId === user.id);
             const isOpen = proposal.status === "OPEN";
+            const deadlinePassed = proposal.votingDeadline <= new Date();
 
             return (
               <Card key={proposal.id}>
@@ -65,6 +66,9 @@ export default async function ProposalsPage() {
                       <VoteButtons proposalId={proposal.id} myChoice={myVote?.choice ?? null} />
                     ) : (
                       <span className="text-xs text-muted-foreground">Voting closed</span>
+                    )}
+                    {isOpen && deadlinePassed && user.role === "ADMIN" && (
+                      <ResolveNowButton proposalId={proposal.id} />
                     )}
                     {proposal.status === "PASSED" && user.role === "ADMIN" && (
                       <MarkImplementedButton proposalId={proposal.id} />

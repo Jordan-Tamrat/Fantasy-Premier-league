@@ -1,0 +1,26 @@
+name: Scheduled jobs
+
+# Vercel's Hobby plan only allows cron to fire once a day, which is too
+# coarse for these (see vercel.json's daily jobs — kept as a backstop in
+# case this workflow ever gets disabled by GitHub's 60-day-inactivity rule).
+# This is the primary schedule. GitHub Actions doesn't guarantee exact
+# timing either — occasional delays of 10-30 min are normal — but that's
+# fine for what these jobs do: refreshing cached FPL scores and closing out
+# a deadline a little after it passes, not before.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Game Week transitions + proposal resolution
+        run: |
+          curl -sf -X GET "${{ secrets.APP_URL }}/api/cron/gameweek-transitions" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+      - name: FPL score sync
+        run: |
+          curl -sf -X GET "${{ secrets.APP_URL }}/api/cron/fpl-sync" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

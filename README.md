@@ -102,13 +102,40 @@ npm run db:seed      # prisma db seed
 ## Deployment (Vercel)
 
 1. Import the repo into Vercel, set the same environment variables as `.env.example` (plus `AUTH_URL` = your production URL and a random `CRON_SECRET`).
-2. `vercel.json` already declares the two cron jobs (Game Week transitions every 15 min, FPL sync every 5 min). Vercel automatically sends `Authorization: Bearer $CRON_SECRET` on cron requests when `CRON_SECRET` is set — `lib/cron.ts` checks exactly that.
-3. Run `npx prisma migrate deploy` against production (via a one-off job, or locally pointed at the production `DIRECT_URL`) before first deploy.
+2. Run `npx prisma migrate deploy` against production (via a one-off job, or locally pointed at the production `DIRECT_URL`) before first deploy.
+
+### Scheduled jobs
+
+Vercel's Hobby plan caps cron at once a day, which is too coarse for Game Week
+transitions and FPL syncing. The real schedule is a **GitHub Actions**
+workflow (`.github/workflows/cron.yml`), running every 5 minutes — free and
+unlimited on a public repo. `vercel.json` still declares the same two jobs
+once a day as a backstop, in case the workflow ever gets disabled by GitHub's
+60-day-inactivity rule.
+
+To enable it, add two repository secrets (GitHub repo → Settings → Secrets
+and variables → Actions):
+
+- `APP_URL` — your production URL (e.g. `https://your-app.vercel.app`)
+- `CRON_SECRET` — the same value as the `CRON_SECRET` env var on Vercel
+
+Both `/api/cron/*` routes check `Authorization: Bearer $CRON_SECRET`
+regardless of who calls them — Vercel's own cron sends this header
+automatically when `CRON_SECRET` is set as an env var, and the GitHub Actions
+workflow sends it explicitly.
+
+GitHub Actions doesn't guarantee exact timing either — occasional delays of
+10-30 minutes are normal, worse during peak load. That's fine for what these
+jobs do (refresh cached FPL scores, close out a deadline a little after it
+passes) — none of it needs to-the-minute precision. Every lifecycle step
+(open, close payments, lock, finalize, sync) also has a manual button in
+`/admin/gameweeks/[id]` that does the same thing instantly, and rule
+proposals have a manual "Tally votes now" fallback once their deadline has
+passed — so nothing is actually blocked if a scheduled run is late or missed.
 
 ## Known limitations / next steps
 
 - **`lockGameWeek`/`finalizeResults` tests run against the real dev database**, not a mock — `npm run test` will create and delete real rows (a few test users, one Game Week) while it runs. Every test cleans up fully in `afterEach`, including the system chat messages and notifications those functions fan out to every member (see `services/gameWeekTestFixtures.ts`). Safe to run repeatedly, but don't point `DATABASE_URL` at production when running tests.
-- **Payment proof review UX is basic** — signed URLs are generated server-side per page load rather than through a dedicated API route; fine at this scale, but note if screenshot review traffic ever grows.
 - **No email delivery** — invite links are shown to the admin to share manually (WhatsApp, SMS, etc.) rather than emailed. Notifications are in-app only.
 - **Chat updates by polling, not websockets** — the client asks for new messages every 4 seconds while a conversation is active, backing off to 20 seconds once it's been quiet for two minutes, and skipping the request entirely while the tab is hidden. For ~20 members this is fine and avoids bridging NextAuth sessions into Supabase Realtime's row-level-security model (a second auth system to keep in sync). If concurrent viewers ever reach the high tens, Supabase Realtime is the upgrade path.
 - **No "load older messages"** — the chat shows the most recent 50. `listMessages()` already takes a `before` cursor, so adding a scroll-back button is small, but the UI doesn't call it yet.

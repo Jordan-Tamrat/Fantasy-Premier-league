@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireUser, requireAdmin } from "@/lib/auth";
 import { proposalSchema, voteSchema } from "@/lib/validations/phase2.schema";
-import { createProposal, castVote, markProposalImplemented } from "@/services/proposalService";
+import { prisma } from "@/lib/prisma";
+import { createProposal, castVote, markProposalImplemented, resolveProposal } from "@/services/proposalService";
 
 export async function createProposalAction(_prevState: string | undefined, formData: FormData) {
   const user = await requireUser();
@@ -30,6 +31,23 @@ export async function castVoteAction(proposalId: string, choice: "YES" | "NO") {
   if (!parsed.success) throw new Error("Invalid vote");
 
   await castVote(parsed.data.proposalId, user.id, parsed.data.choice);
+  revalidatePath("/proposals");
+  revalidatePath(`/proposals/${proposalId}`);
+}
+
+/**
+ * Manual safety net for the "resolve proposals whose deadline has passed"
+ * step normally done by the scheduled job — same rule enforced here (only
+ * once the deadline has actually passed) so this can't be used to cut
+ * voting short.
+ */
+export async function resolveProposalNowAction(proposalId: string) {
+  const admin = await requireAdmin();
+  const proposal = await prisma.proposal.findUniqueOrThrow({ where: { id: proposalId } });
+  if (proposal.votingDeadline > new Date()) {
+    throw new Error("Voting is still open — the deadline hasn't passed yet");
+  }
+  await resolveProposal(proposalId, { userId: admin.id });
   revalidatePath("/proposals");
   revalidatePath(`/proposals/${proposalId}`);
 }

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { createProposalAction, castVoteAction, markImplementedAction } from "./actions";
+import { createProposalAction, castVoteAction, markImplementedAction, resolveProposalNowAction } from "./actions";
 
 export function NewProposalForm() {
   const [open, setOpen] = useState(false);
@@ -76,6 +76,37 @@ export function VoteButtons({ proposalId, myChoice }: { proposalId: string; myCh
       >
         <ThumbsDown className="size-3.5" /> No
       </Button>
+    </div>
+  );
+}
+
+/**
+ * Voting normally gets tallied automatically once the deadline passes (see
+ * the scheduled job). This is the manual fallback for that — shown only once
+ * the deadline has genuinely passed, so it can't be used to cut voting short.
+ */
+export function ResolveNowButton({ proposalId }: { proposalId: string }) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={isPending}
+        onClick={() =>
+          startTransition(async () => {
+            try {
+              await resolveProposalNowAction(proposalId);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Could not resolve this proposal");
+            }
+          })
+        }
+      >
+        {isPending ? "Resolving…" : "Tally votes now"}
+      </Button>
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
 }

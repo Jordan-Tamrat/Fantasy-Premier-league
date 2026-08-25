@@ -1,6 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cron/gameweek-transitions", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/fpl-sync", "schedule": "*/5 * * * *" }
+    { "path": "/api/cron/gameweek-transitions", "schedule": "0 3 * * *" },
+    { "path": "/api/cron/fpl-sync", "schedule": "5 3 * * *" }
   ]
 }
