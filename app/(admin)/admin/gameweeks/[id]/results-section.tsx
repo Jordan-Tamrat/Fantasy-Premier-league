@@ -101,6 +101,8 @@ export interface FinalResultRow {
   rank: number;
   points: number;
   prizeAwarded: string;
+  recipientTelebirr: string | null;
+  recipientCbe: string | null;
   prizePayment: { id: string; status: string; method: string | null } | null;
 }
 
@@ -119,7 +121,12 @@ export function FinalResultsSection({ gameWeekId, results }: { gameWeekId: strin
             )}
           </div>
           {r.prizePayment && r.prizePayment.status === "PENDING" && (
-            <MarkPrizePaidForm gameWeekId={gameWeekId} prizePaymentId={r.prizePayment.id} />
+            <MarkPrizePaidForm
+              gameWeekId={gameWeekId}
+              prizePaymentId={r.prizePayment.id}
+              recipientTelebirr={r.recipientTelebirr}
+              recipientCbe={r.recipientCbe}
+            />
           )}
           {r.prizePayment && r.prizePayment.status === "PAID" && (
             <Badge className="mt-2">Paid via {r.prizePayment.method}</Badge>

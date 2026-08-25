@@ -46,7 +46,11 @@ export default async function ProfilePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Payment methods</CardTitle>
+            <CardTitle className="text-base">Your payout details</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Where the admin sends <span className="font-medium">your</span> winnings when you place. This is personal
+              to you — it&apos;s not the account members pay their entry fee into.
+            </p>
           </CardHeader>
           <CardContent>
             <PaymentMethodsForm telebirrNumber={user.telebirrNumber} cbeAccountNumber={user.cbeAccountNumber} />

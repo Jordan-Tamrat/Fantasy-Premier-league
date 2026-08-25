@@ -61,6 +61,8 @@ export default async function AdminGameWeekDetailPage({ params }: { params: Prom
     rank: r.rank,
     points: r.points,
     prizeAwarded: r.prizeAwarded.toString(),
+    recipientTelebirr: r.user.telebirrNumber,
+    recipientCbe: r.user.cbeAccountNumber,
     prizePayment: r.prizePayment ? { id: r.prizePayment.id, status: r.prizePayment.status, method: r.prizePayment.method } : null,
   }));
 

@@ -26,6 +26,10 @@ export default async function AdminSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Defaults for new Game Weeks</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            The Telebirr / CBE numbers here are the league&apos;s collection account — this is what every member sees
+            when they pay their entry fee. (Each person&apos;s own payout details live on their Profile.)
+          </p>
         </CardHeader>
         <CardContent>
           <SettingsForm settings={settingsView} />
