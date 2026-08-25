@@ -44,10 +44,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
+      // At sign-in the role comes straight off the authorized user.
       if (user) {
         token.id = user.id as string;
         token.role = (user as { role: Role }).role;
+        return token;
+      }
+      // On every later request, re-read the current role from the database so
+      // that promoting (or demoting) someone on the Members page takes effect
+      // on their next request / page refresh — not only after they sign out
+      // and back in. JWT sessions otherwise keep the role frozen from login.
+      if (token.id) {
+        const current = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true },
+        });
+        if (current) token.role = current.role;
       }
       return token;
     },
