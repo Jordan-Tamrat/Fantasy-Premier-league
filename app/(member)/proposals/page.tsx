@@ -36,7 +36,7 @@ export default async function ProposalsPage() {
             const deadlinePassed = proposal.votingDeadline <= new Date();
 
             return (
-              <Card key={proposal.id}>
+              <Card key={proposal.id} id={`proposal-${proposal.id}`} className="scroll-mt-20">
                 <CardContent className="space-y-3 py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

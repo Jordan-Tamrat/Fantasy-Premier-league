@@ -15,9 +15,15 @@ export default async function HistoryPage() {
     include: { results: { include: { user: true }, orderBy: { rank: "asc" }, take: 3 } },
   });
 
+  // A cancelled Game Week refunds everyone's entry fee, so it must not count
+  // against anyone's net — exclude cancelled Game Weeks from every stat.
   const [participations, myResults] = await Promise.all([
-    prisma.gameWeekParticipant.findMany({ where: { userId: user.id } }),
-    prisma.gameWeekResult.findMany({ where: { userId: user.id } }),
+    prisma.gameWeekParticipant.findMany({
+      where: { userId: user.id, gameWeek: { status: { not: "CANCELLED" } } },
+    }),
+    prisma.gameWeekResult.findMany({
+      where: { userId: user.id, gameWeek: { status: { not: "CANCELLED" } } },
+    }),
   ]);
 
   const wins = myResults.filter((r) => r.rank === 1).length;

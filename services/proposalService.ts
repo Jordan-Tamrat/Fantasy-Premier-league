@@ -52,7 +52,7 @@ export async function createProposal(
         type: "PROPOSAL_OPENED",
         title: "New rule proposal",
         body: input.title,
-        href: `/proposals/${proposal.id}`,
+        href: `/proposals#proposal-${proposal.id}`,
       },
       { exceptUserId: actor.userId },
     );
@@ -110,7 +110,7 @@ export async function resolveProposal(proposalId: string, actor?: { userId?: str
       type: "PROPOSAL_RESOLVED",
       title: `Proposal ${passed ? "passed" : "rejected"}`,
       body: `${proposal.title} — ${yes} yes / ${no} no`,
-      href: `/proposals/${proposalId}`,
+      href: `/proposals#proposal-${proposalId}`,
     });
 
     return updated;

@@ -7,16 +7,24 @@ import { Avatar, avatarUrl } from "@/components/rank-badge";
 // Game Week's leaderboard (shown on that Game Week's own page). This one
 // answers "who's actually winning the league", not "who won this week".
 export default async function LeaderboardPage() {
+  // A cancelled Game Week is refunded, so it counts for nobody — filter it out
+  // of both the entry-fee and prize aggregations everywhere below.
+  const notCancelled = { status: { not: "CANCELLED" as const } };
   const [users, participantAgg, winCounts, top3Counts, prizeAgg] = await Promise.all([
     prisma.user.findMany({ where: { status: "ACTIVE" }, select: { id: true, name: true, profileImagePath: true } }),
     prisma.gameWeekParticipant.groupBy({
       by: ["userId"],
+      where: { gameWeek: notCancelled },
       _count: { _all: true },
       _sum: { entryFeePaidSnapshot: true },
     }),
-    prisma.gameWeekResult.groupBy({ by: ["userId"], where: { rank: 1 }, _count: { _all: true } }),
-    prisma.gameWeekResult.groupBy({ by: ["userId"], where: { rank: { lte: 3 } }, _count: { _all: true } }),
-    prisma.gameWeekResult.groupBy({ by: ["userId"], _sum: { prizeAwarded: true } }),
+    prisma.gameWeekResult.groupBy({ by: ["userId"], where: { rank: 1, gameWeek: notCancelled }, _count: { _all: true } }),
+    prisma.gameWeekResult.groupBy({
+      by: ["userId"],
+      where: { rank: { lte: 3 }, gameWeek: notCancelled },
+      _count: { _all: true },
+    }),
+    prisma.gameWeekResult.groupBy({ by: ["userId"], where: { gameWeek: notCancelled }, _sum: { prizeAwarded: true } }),
   ]);
 
   const participantById = new Map(participantAgg.map((p) => [p.userId, p]));
