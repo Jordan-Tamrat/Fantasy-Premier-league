@@ -5,6 +5,21 @@ import { SettingsForm } from "./settings-form";
 export default async function AdminSettingsPage() {
   const settings = await prisma.leagueSettings.findUnique({ where: { id: "default" } });
 
+  // Decimal (and other Prisma runtime types) can't cross into a Client
+  // Component, so hand the form a plain, already-serialized shape.
+  const settingsView = settings
+    ? {
+        leagueName: settings.leagueName,
+        currency: settings.currency,
+        defaultEntryFee: settings.defaultEntryFee.toString(),
+        defaultPaymentDeadlineOffsetHours: settings.defaultPaymentDeadlineOffsetHours,
+        defaultMinParticipants: settings.defaultMinParticipants,
+        leagueAccountName: settings.leagueAccountName,
+        leagueTelebirrNumber: settings.leagueTelebirrNumber,
+        leagueCbeAccountNumber: settings.leagueCbeAccountNumber,
+      }
+    : null;
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-8">
       <h1 className="text-2xl font-semibold">League Settings</h1>
@@ -13,7 +28,7 @@ export default async function AdminSettingsPage() {
           <CardTitle className="text-base">Defaults for new Game Weeks</CardTitle>
         </CardHeader>
         <CardContent>
-          <SettingsForm settings={settings} />
+          <SettingsForm settings={settingsView} />
         </CardContent>
       </Card>
     </div>

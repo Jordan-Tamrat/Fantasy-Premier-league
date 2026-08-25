@@ -5,6 +5,7 @@ import { listNotifications } from "@/services/notificationService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/datetime";
 import { markAllReadAction } from "./actions";
 
 export default async function NotificationsPage() {
@@ -40,7 +41,7 @@ export default async function NotificationsPage() {
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold">{n.title}</p>
                       {n.body && <p className="text-sm text-muted-foreground">{n.body}</p>}
-                      <p className="mt-1 text-xs text-muted-foreground">{n.createdAt.toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(n.createdAt)}</p>
                     </div>
                   </div>
                 </CardContent>

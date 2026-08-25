@@ -1,15 +1,17 @@
-import { Trophy } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
+import brandLogo from "@/app/icon.png";
 
 export function BrandMark({ size = "md" }: { size?: "sm" | "md" }) {
+  const dimension = size === "sm" ? 28 : 36;
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-[var(--fpl-green)] text-[var(--fpl-purple)] shadow-[0_0_16px_-4px_var(--fpl-green)]",
+        "flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-[0_0_16px_-4px_var(--fpl-green)]",
         size === "sm" ? "size-7" : "size-9",
       )}
     >
-      <Trophy className={size === "sm" ? "size-3.5" : "size-4.5"} strokeWidth={2.5} />
+      <Image src={brandLogo} alt="" width={dimension} height={dimension} className="size-full object-contain p-0.5" />
     </span>
   );
 }

@@ -19,8 +19,13 @@ export function ProfilePictureForm({ name, imageUrl }: { name: string; imageUrl:
   const [error, formAction, isPending] = useActionState(updateProfilePictureAction, undefined);
   const [sizeError, setSizeError] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
+  // A local preview of the just-picked image so the new avatar appears
+  // instantly, instead of waiting for the upload + revalidation round-trip.
+  const [preview, setPreview] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const shownImage = preview ?? imageUrl;
 
   return (
     <form
@@ -45,6 +50,7 @@ export function ProfilePictureForm({ name, imageUrl }: { name: string; imageUrl:
           return;
         }
 
+        setPreview(URL.createObjectURL(optimized));
         const formData = new FormData();
         formData.set("image", optimized);
         startTransition(() => formAction(formData));
@@ -52,8 +58,8 @@ export function ProfilePictureForm({ name, imageUrl }: { name: string; imageUrl:
     >
       <label htmlFor="image" className="group relative block size-16 cursor-pointer">
         <div className="flex size-16 items-center justify-center overflow-hidden rounded-full bg-[var(--fpl-green)] text-xl font-black text-[var(--fpl-purple)] shadow-[0_0_24px_-4px_var(--fpl-green)]">
-          {imageUrl ? (
-            <Image src={imageUrl} alt={name} width={64} height={64} unoptimized className="size-full object-cover" />
+          {shownImage ? (
+            <Image src={shownImage} alt={name} width={64} height={64} unoptimized className="size-full object-cover" />
           ) : (
             initials(name)
           )}

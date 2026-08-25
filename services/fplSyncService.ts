@@ -1,6 +1,19 @@
 import { prisma } from "@/lib/prisma";
-import { FPLService } from "@/lib/fpl";
+import { FPLService, FPLApiError } from "@/lib/fpl";
 import { writeAuditLog } from "@/services/auditService";
+
+/** Turns a raw FPL fetch failure into something an admin can act on. */
+function describeSyncError(error: unknown): string {
+  if (error instanceof FPLApiError) {
+    // The picks endpoint 404s for a Game Week that hasn't been played yet
+    // (the usual cause) or one a manager never set a team for.
+    if (error.status === 404) {
+      return "FPL has no score for this Game Week yet — it likely hasn't been played, or this manager didn't set a team for it.";
+    }
+    return `FPL API error (${error.status ?? "network"}). Try again in a moment.`;
+  }
+  return error instanceof Error ? error.message : "Unknown error";
+}
 
 interface SyncActor {
   userId?: string;
@@ -90,10 +103,7 @@ export async function syncGameWeekScores(gameWeekId: string, options?: { userId?
       });
       succeeded++;
     } catch (error) {
-      failed.push({
-        userId: participant.userId,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+      failed.push({ userId: participant.userId, error: describeSyncError(error) });
     }
   }
 

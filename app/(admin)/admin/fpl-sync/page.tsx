@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { FPLService } from "@/lib/fpl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatDateTime } from "@/lib/datetime";
 import { SyncNowButton } from "./sync-now-button";
 
 export default async function AdminFplSyncPage() {
@@ -26,7 +27,7 @@ export default async function AdminFplSyncPage() {
           {currentEvent ? (
             <p>
               Current FPL Game Week: <strong>{currentEvent.name}</strong> · deadline{" "}
-              {new Date(currentEvent.deadline_time).toLocaleString()}
+              {formatDateTime(currentEvent.deadline_time)}
             </p>
           ) : (
             <p className="text-destructive">FPL synchronization unavailable right now.</p>
@@ -56,7 +57,7 @@ export default async function AdminFplSyncPage() {
                 {account.user.name} — {account.fplTeamName}
               </span>
               <Badge variant="outline">
-                {account.lastSyncedAt ? `Synced ${account.lastSyncedAt.toLocaleString()}` : "Never synced"}
+                {account.lastSyncedAt ? `Synced ${formatDateTime(account.lastSyncedAt)}` : "Never synced"}
               </Badge>
             </div>
           ))}

@@ -5,21 +5,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateLeagueSettingsAction } from "./actions";
-import type { LeagueSettings } from "@/lib/generated/prisma/client";
+import { APP_NAME } from "@/lib/brand";
 
-export function SettingsForm({ settings }: { settings: LeagueSettings | null }) {
+// A plain, already-serialized view of LeagueSettings — no Prisma Decimal or
+// other runtime types, so it's safe to pass from the Server Component page.
+interface SettingsView {
+  leagueName: string;
+  currency: string;
+  defaultEntryFee: string;
+  defaultPaymentDeadlineOffsetHours: number;
+  defaultMinParticipants: number;
+  leagueAccountName: string | null;
+  leagueTelebirrNumber: string | null;
+  leagueCbeAccountNumber: string | null;
+}
+
+export function SettingsForm({ settings }: { settings: SettingsView | null }) {
   const [message, formAction, isPending] = useActionState(updateLeagueSettingsAction, undefined);
 
   return (
     <form action={formAction} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="leagueName" label="League name" defaultValue={settings?.leagueName ?? "Fantasy Money League"} />
+        <Field id="leagueName" label="League name" defaultValue={settings?.leagueName ?? APP_NAME} />
         <Field id="currency" label="Currency" defaultValue={settings?.currency ?? "ETB"} />
         <Field
           id="defaultEntryFee"
           label="Default entry fee"
           type="number"
-          defaultValue={settings ? settings.defaultEntryFee.toString() : "100"}
+          defaultValue={settings?.defaultEntryFee ?? "100"}
         />
         <Field
           id="defaultPaymentDeadlineOffsetHours"

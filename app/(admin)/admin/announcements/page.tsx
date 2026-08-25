@@ -3,6 +3,7 @@ import { listAnnouncements } from "@/services/announcementService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AnnouncementForm } from "./announcement-form";
+import { formatDateTime } from "@/lib/datetime";
 import { deleteAnnouncementAction } from "./actions";
 
 export default async function AdminAnnouncementsPage() {
@@ -29,7 +30,7 @@ export default async function AdminAnnouncementsPage() {
                 <p className="font-bold">{a.title}</p>
                 <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{a.body}</p>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {a.author.name} · {a.createdAt.toLocaleString()}
+                  {a.author.name} · {formatDateTime(a.createdAt)}
                 </p>
               </div>
               <form action={deleteAnnouncementAction.bind(null, a.id)}>

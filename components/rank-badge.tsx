@@ -20,9 +20,16 @@ export function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-/** The signed-URL route path for a user's avatar, or null if they haven't set one. */
+/**
+ * The authenticated route path for a user's avatar, or null if they haven't
+ * set one. The `?v=` cache-buster is derived from the stored path (which
+ * embeds an upload timestamp), so replacing a picture yields a new URL and the
+ * browser reloads it immediately instead of serving the old cached image.
+ */
 export function avatarUrl(user: { id: string; profileImagePath: string | null }): string | null {
-  return user.profileImagePath ? `/api/attachments/avatar/${user.id}` : null;
+  if (!user.profileImagePath) return null;
+  const version = user.profileImagePath.replace(/\D/g, "").slice(-13) || "1";
+  return `/api/attachments/avatar/${user.id}?v=${version}`;
 }
 
 export function Avatar({

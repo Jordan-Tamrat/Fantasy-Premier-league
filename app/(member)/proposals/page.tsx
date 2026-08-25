@@ -3,6 +3,7 @@ import { listProposals, tallyVotes } from "@/services/proposalService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { formatDateTime, formatDate } from "@/lib/datetime";
 import { NewProposalForm, VoteButtons, MarkImplementedButton, ResolveNowButton } from "./proposal-forms";
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -43,8 +44,8 @@ export default async function ProposalsPage() {
                       <p className="text-xs text-muted-foreground">
                         by {proposal.author.name} ·{" "}
                         {isOpen
-                          ? `voting closes ${proposal.votingDeadline.toLocaleString()}`
-                          : `closed ${proposal.resolvedAt?.toLocaleDateString() ?? ""}`}
+                          ? `voting closes ${formatDateTime(proposal.votingDeadline)}`
+                          : `closed ${proposal.resolvedAt ? formatDate(proposal.resolvedAt) : ""}`}
                       </p>
                     </div>
                     <Badge variant={STATUS_VARIANTS[proposal.status] ?? "secondary"}>{proposal.status}</Badge>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,16 @@ export function PendingResultsSection({
   gameWeekId: string;
   participants: ParticipantScoreRow[];
 }) {
+  const anyMissing = participants.some((p) => p.points == null);
   return (
     <div className="space-y-2">
+      {anyMissing && (
+        <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+          FPL scores only exist once the Game Week&apos;s matches have finished and FPL marks it complete.
+          &ldquo;Missing FPL data&rdquo; usually means the Game Week hasn&apos;t been played yet — you can&apos;t
+          finalize until every score is in, but you can enter a score manually if FPL is delayed.
+        </p>
+      )}
       {participants.map((p) => (
         <ParticipantScoreRowItem key={p.userId} gameWeekId={gameWeekId} participant={p} />
       ))}
@@ -40,10 +48,19 @@ function ParticipantScoreRowItem({
   participant: ParticipantScoreRow;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [syncResult, setSyncResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [error, formAction, formPending] = useActionState(
     submitManualScoreAction.bind(null, gameWeekId, participant.userId),
     undefined,
   );
+
+  const handleRetry = () => {
+    setSyncResult(null);
+    startTransition(async () => {
+      const result = await retrySyncOneAction(gameWeekId, participant.userId);
+      setSyncResult(result);
+    });
+  };
 
   return (
     <div className="rounded-xl border p-3 text-sm">
@@ -58,13 +75,8 @@ function ParticipantScoreRowItem({
         )}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={isPending}
-          onClick={() => startTransition(() => retrySyncOneAction(gameWeekId, participant.userId))}
-        >
-          Retry sync
+        <Button size="sm" variant="outline" disabled={isPending} onClick={handleRetry}>
+          {isPending ? "Syncing…" : "Retry sync"}
         </Button>
         <form action={formAction} className="flex items-center gap-2">
           <Input name="points" type="number" placeholder="Points" className="w-20" required />
@@ -74,6 +86,9 @@ function ParticipantScoreRowItem({
           </Button>
         </form>
       </div>
+      {syncResult && (
+        <p className={syncResult.ok ? "mt-1 text-[var(--fpl-green)]" : "mt-1 text-destructive"}>{syncResult.message}</p>
+      )}
       {error && <p className="mt-1 text-destructive">{error}</p>}
     </div>
   );

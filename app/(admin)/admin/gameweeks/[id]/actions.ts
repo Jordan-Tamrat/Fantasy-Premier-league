@@ -104,10 +104,15 @@ export async function rejectPaymentAction(
   revalidateGameWeek(gameWeekId);
 }
 
-export async function retrySyncOneAction(gameWeekId: string, userId: string) {
+export async function retrySyncOneAction(
+  gameWeekId: string,
+  userId: string,
+): Promise<{ ok: boolean; message: string }> {
   await requireAdmin();
-  await syncGameWeekScores(gameWeekId, { userId });
+  const { succeeded, failed } = await syncGameWeekScores(gameWeekId, { userId });
   revalidateGameWeek(gameWeekId);
+  if (succeeded > 0) return { ok: true, message: "Score synced from FPL." };
+  return { ok: false, message: failed[0]?.error ?? "Nothing was synced." };
 }
 
 export async function submitManualScoreAction(

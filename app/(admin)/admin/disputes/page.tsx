@@ -2,6 +2,7 @@ import { listAllDisputes } from "@/services/disputeService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, avatarUrl } from "@/components/rank-badge";
+import { formatDate } from "@/lib/datetime";
 import { RespondForm } from "./respond-form";
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -34,7 +35,7 @@ export default async function AdminDisputesPage() {
                       <p className="font-bold">{d.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {d.author.name} · {d.category.replace("_", " ").toLowerCase()} ·{" "}
-                        {d.createdAt.toLocaleDateString()}
+                        {formatDate(d.createdAt)}
                       </p>
                     </div>
                   </div>

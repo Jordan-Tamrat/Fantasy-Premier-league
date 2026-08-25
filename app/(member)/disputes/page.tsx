@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { listDisputesForUser } from "@/services/disputeService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/datetime";
 import { NewDisputeForm } from "./dispute-form";
 
 export const DISPUTE_STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
@@ -36,7 +37,7 @@ export default async function DisputesPage() {
                   <div className="min-w-0">
                     <p className="font-bold">{d.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {d.category.replace("_", " ").toLowerCase()} · {d.createdAt.toLocaleDateString()}
+                      {d.category.replace("_", " ").toLowerCase()} · {formatDate(d.createdAt)}
                     </p>
                   </div>
                   <Badge variant={DISPUTE_STATUS_VARIANTS[d.status] ?? "secondary"}>

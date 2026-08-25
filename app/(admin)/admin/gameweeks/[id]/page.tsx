@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { decimal, formatMoney } from "@/lib/money";
+import { formatDateTime } from "@/lib/datetime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GameWeekHero } from "@/components/gw-hero";
@@ -96,8 +97,8 @@ export default async function AdminGameWeekDetailPage({ params }: { params: Prom
           <TabsContent value="overview">
             <Card>
               <CardContent className="grid grid-cols-2 gap-4 py-4 text-sm">
-                <Info label="FPL deadline" value={gameWeek.fplDeadline.toLocaleString()} />
-                <Info label="Payment deadline" value={gameWeek.paymentDeadline.toLocaleString()} />
+                <Info label="FPL deadline" value={formatDateTime(gameWeek.fplDeadline)} />
+                <Info label="Payment deadline" value={formatDateTime(gameWeek.paymentDeadline)} />
               </CardContent>
             </Card>
           </TabsContent>

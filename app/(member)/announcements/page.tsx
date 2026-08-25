@@ -1,6 +1,7 @@
 import { Megaphone } from "lucide-react";
 import { listAnnouncements } from "@/services/announcementService";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/datetime";
 
 export default async function AnnouncementsPage() {
   const announcements = await listAnnouncements();
@@ -23,7 +24,7 @@ export default async function AnnouncementsPage() {
                     <p className="font-bold">{a.title}</p>
                     <p className="mt-1 whitespace-pre-wrap text-sm">{a.body}</p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {a.author.name} · {a.createdAt.toLocaleString()}
+                      {a.author.name} · {formatDateTime(a.createdAt)}
                     </p>
                   </div>
                 </div>

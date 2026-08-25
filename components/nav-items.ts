@@ -40,27 +40,46 @@ export const MEMBER_NAV_ITEMS: NavItem[] = [
   { href: "/profile", label: "Profile", icon: User },
 ];
 
-// Mobile gets the five screens people actually open day to day.
+// Mobile gets the five screens people actually open day to day. Labels are
+// kept short so they fit the bottom bar on one line without wrapping.
 export const MEMBER_BOTTOM_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/gameweeks", label: "Game Weeks", icon: Trophy },
+  { href: "/gameweeks", label: "Games", icon: Trophy },
   { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/proposals", label: "Vote", icon: Vote },
   { href: "/profile", label: "Profile", icon: User },
 ];
 
-// Payment verification and prize configuration live under each Game Week
-// (/admin/gameweeks/[id]/...) rather than as their own top-level pages —
-// there's realistically only ever one Game Week actively taking payments.
+// An admin is also a league member, so their nav is a single unified list:
+// the admin-only tools first, then the shared/social pages (which have no
+// admin-specific route and link to the member ones — those pages surface the
+// admin's extra powers, like deleting any chat message, on their own).
+// Because the whole shell picks nav by *role* rather than by which route
+// group you're in, an admin never gets dumped into the member sidebar (e.g.
+// when opening notifications), which is why there's no "switch view" toggle.
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/dashboard", label: "Overview", icon: ShieldCheck },
   { href: "/admin/gameweeks", label: "Game Weeks", icon: Trophy },
-  { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
-  { href: "/admin/rules", label: "Rules", icon: ScrollText },
-  { href: "/admin/disputes", label: "Disputes", icon: Flag },
   { href: "/admin/members", label: "Members", icon: Users },
   { href: "/admin/invites", label: "Invites", icon: Mail },
   { href: "/admin/fpl-sync", label: "FPL Sync", icon: RefreshCw },
   { href: "/admin/audit-log", label: "Audit Log", icon: ClipboardList },
   { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/leaderboard", label: "Leaderboard", icon: Medal },
+  { href: "/chat", label: "Chat", icon: MessageCircle },
+  { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
+  { href: "/admin/rules", label: "Rules", icon: ScrollText },
+  { href: "/proposals", label: "Proposals", icon: Vote },
+  { href: "/admin/disputes", label: "Disputes", icon: Flag },
+  { href: "/history", label: "History", icon: History },
+  { href: "/profile", label: "Profile", icon: User },
+];
+
+// The four an admin reaches for most on a phone; the rest are one tap away in
+// the hamburger drawer.
+export const ADMIN_BOTTOM_NAV_ITEMS: NavItem[] = [
+  { href: "/admin/dashboard", label: "Overview", icon: ShieldCheck },
+  { href: "/admin/gameweeks", label: "Games", icon: Trophy },
+  { href: "/chat", label: "Chat", icon: MessageCircle },
+  { href: "/admin/members", label: "Members", icon: Users },
 ];

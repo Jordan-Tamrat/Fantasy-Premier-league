@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/datetime";
 
 export default async function AdminAuditLogPage() {
   const logs = await prisma.auditLog.findMany({
@@ -17,7 +18,7 @@ export default async function AdminAuditLogPage() {
             <CardContent className="py-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{log.action}</span>
-                <span className="text-xs text-muted-foreground">{log.createdAt.toLocaleString()}</span>
+                <span className="text-xs text-muted-foreground">{formatDateTime(log.createdAt)}</span>
               </div>
               <p className="text-muted-foreground">
                 {log.actor?.name ?? log.actorLabel ?? "System"} · {log.entityType} #{log.entityId.slice(0, 8)}

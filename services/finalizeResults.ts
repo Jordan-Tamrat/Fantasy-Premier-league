@@ -36,8 +36,14 @@ export async function finalizeResults(gameWeekId: string, actor: FinalizeActor) 
     include: { participants: true, prizePositions: true },
   });
   if (!gameWeek) throw new Error("Game Week not found");
-  if (gameWeek.status !== "RESULTS_PENDING") {
-    throw new Error(`Cannot finalize a Game Week in status ${gameWeek.status} (must be RESULTS_PENDING)`);
+  // Finalizing is a manual admin action, so it's allowed any time after the
+  // participant list is locked — not only once the cron has advanced the
+  // status to RESULTS_PENDING. Correctness is still guarded by the
+  // missing-scores check below: with no real FPL scores yet, this stops with
+  // MissingFplDataError rather than finalizing empty results.
+  const FINALIZABLE = ["LOCKED", "LIVE", "RESULTS_PENDING"];
+  if (!FINALIZABLE.includes(gameWeek.status)) {
+    throw new Error(`Cannot finalize a Game Week in status ${gameWeek.status} (it must be locked first)`);
   }
 
   const snapshots = await prisma.fPLGameWeekSnapshot.findMany({ where: { gameWeekId } });
@@ -62,7 +68,7 @@ export async function finalizeResults(gameWeekId: string, actor: FinalizeActor) 
 
   return prisma.$transaction(async (tx) => {
     const fresh = await tx.gameWeek.findUnique({ where: { id: gameWeekId } });
-    if (!fresh || fresh.status !== "RESULTS_PENDING") {
+    if (!fresh || !FINALIZABLE.includes(fresh.status)) {
       throw new Error("Game Week was already finalized or is not ready");
     }
 

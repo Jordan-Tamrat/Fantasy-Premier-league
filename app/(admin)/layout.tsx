@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { getUnreadCount } from "@/services/notificationService";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -12,6 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <AppShell variant="admin" userName={session.user.name ?? "Admin"} isAdmin unreadCount={unreadCount}>
+      <AutoRefresh />
       {children}
     </AppShell>
   );

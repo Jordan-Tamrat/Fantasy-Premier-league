@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { getUnreadCount } from "@/services/notificationService";
 
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,7 @@ export default async function MemberLayout({ children }: { children: React.React
       isAdmin={session.user.role === "ADMIN"}
       unreadCount={unreadCount}
     >
+      <AutoRefresh />
       {children}
     </AppShell>
   );

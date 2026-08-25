@@ -8,6 +8,7 @@ import { Avatar } from "@/components/rank-badge";
 import { cn } from "@/lib/utils";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/uploadLimits";
 import { compressImage } from "@/lib/image-compress";
+import { formatTime, leagueDayKey, formatDaySeparator } from "@/lib/datetime";
 import {
   sendMessageAction,
   deleteMessageAction,
@@ -217,17 +218,32 @@ export function ChatRoom({
         {messages.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">No messages yet. Say hello 👋</p>
         )}
-        {messages.map((message) => (
-          <MessageBubble
-            key={message.id}
-            message={message}
-            isOwn={message.senderId === currentUserId}
-            isAdmin={isAdmin}
-            onReply={() => setReplyTo(message)}
-            onDelete={() => startTransition(() => void deleteMessageAction(message.id))}
-            onTogglePin={() => startTransition(() => void togglePinAction(message.id, !message.isPinned))}
-          />
-        ))}
+        {messages.map((message, index) => {
+          const prev = messages[index - 1];
+          // A separator whenever the calendar day (in league time) changes,
+          // Telegram-style — and always before the very first message.
+          const showDaySeparator =
+            !prev || leagueDayKey(prev.createdAt) !== leagueDayKey(message.createdAt);
+          return (
+            <div key={message.id} className="space-y-3">
+              {showDaySeparator && (
+                <div className="flex justify-center py-1">
+                  <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground">
+                    {formatDaySeparator(message.createdAt)}
+                  </span>
+                </div>
+              )}
+              <MessageBubble
+                message={message}
+                isOwn={message.senderId === currentUserId}
+                isAdmin={isAdmin}
+                onReply={() => setReplyTo(message)}
+                onDelete={() => startTransition(() => void deleteMessageAction(message.id))}
+                onTogglePin={() => startTransition(() => void togglePinAction(message.id, !message.isPinned))}
+              />
+            </div>
+          );
+        })}
         <div ref={bottomRef} />
       </div>
 
@@ -359,7 +375,7 @@ function MessageBubble({
           )}
           {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
           <p className={cn("mt-0.5 text-[10px]", isOwn ? "text-primary-foreground/60" : "text-muted-foreground")}>
-            {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {formatTime(message.createdAt)}
             {message.isEdited && " · edited"}
           </p>
         </div>

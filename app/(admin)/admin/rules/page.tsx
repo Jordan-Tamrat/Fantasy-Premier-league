@@ -1,5 +1,6 @@
 import { listRuleSections } from "@/services/ruleService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDate } from "@/lib/datetime";
 import { NewRuleSectionForm, EditRuleSectionForm, DeleteRuleSectionButton } from "./rule-forms";
 
 export default async function AdminRulesPage() {
@@ -27,7 +28,7 @@ export default async function AdminRulesPage() {
             <CardContent className="space-y-2 py-4">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-xs text-muted-foreground">
-                  Updated {section.updatedAt.toLocaleDateString()}
+                  Updated {formatDate(section.updatedAt)}
                 </p>
                 <DeleteRuleSectionButton sectionId={section.id} />
               </div>
