@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { Eye, EyeOff, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,10 +10,15 @@ import { loginAction } from "./actions";
 
 export default function LoginPage() {
   const [error, formAction, isPending] = useActionState(loginAction, undefined);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <Card className="border-white/10 bg-white/95 shadow-2xl backdrop-blur-xl">
-      <CardContent className="pt-6">
+    <Card className="rounded-3xl border-white/20 bg-white/95 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+      <CardContent className="p-6">
+        <div className="mb-5">
+          <h2 className="text-lg font-bold tracking-tight">Welcome back</h2>
+          <p className="text-sm text-muted-foreground">Sign in to your league account</p>
+        </div>
         <form action={formAction} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -20,13 +26,38 @@ export default function LoginPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required autoComplete="current-password" />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="size-4.5" /> : <Eye className="size-4.5" />}
+              </button>
+            </div>
           </div>
           {error && (
             <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>
           )}
-          <Button type="submit" size="lg" className="w-full font-bold" disabled={isPending}>
-            {isPending ? "Signing in…" : "Sign in"}
+          <Button type="submit" size="lg" className="w-full gap-2 font-bold" disabled={isPending}>
+            {isPending ? (
+              "Signing in…"
+            ) : (
+              <>
+                <LogIn className="size-4.5" />
+                Sign in
+              </>
+            )}
           </Button>
         </form>
       </CardContent>

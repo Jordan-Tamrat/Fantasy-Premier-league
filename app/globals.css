@@ -161,4 +161,27 @@
   .text-balance {
     text-wrap: balance;
   }
+  /* Soft, slowly drifting colour blobs used to make the auth screen feel
+     alive without a background image. Each blob overrides the duration/delay
+     inline so they don't move in lockstep. */
+  .animate-float {
+    animation: brand-float 14s ease-in-out infinite;
+  }
+  @keyframes brand-float {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(6%, -8%) scale(1.08);
+    }
+    66% {
+      transform: translate(-5%, 6%) scale(0.95);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-float {
+      animation: none;
+    }
+  }
 }
