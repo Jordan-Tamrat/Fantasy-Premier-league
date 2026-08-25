@@ -51,6 +51,8 @@ export function ChatRoom({
   const [attachmentName, setAttachmentName] = useState<string | null>(null);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isCompressingAttachment, setIsCompressingAttachment] = useState(false);
+  // The chat image currently shown full-screen in the lightbox, or null.
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const [error, formAction, isPending] = useActionState(sendMessageAction, undefined);
   const [, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
@@ -111,6 +113,16 @@ export function ChatRoom({
       clearTimeout(timeoutId);
     };
   }, []);
+
+  // Close the image lightbox on Escape, like any modal.
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
   // Keyed on the *last* message rather than message count, so prepending older
   // history doesn't yank the view down to the bottom. First run jumps instantly
@@ -276,6 +288,7 @@ export function ChatRoom({
                 onDelete={() => startTransition(() => void deleteMessageAction(message.id))}
                 onTogglePin={() => startTransition(() => void togglePinAction(message.id, !message.isPinned))}
                 onToggleReaction={(emoji) => handleToggleReaction(message.id, emoji)}
+                onOpenImage={setLightbox}
               />
             </div>
           );
@@ -343,6 +356,33 @@ export function ChatRoom({
         </div>
         {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
       </form>
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightbox(null)}
+            aria-label="Close"
+            className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <X className="size-5" />
+          </button>
+          {/* Stop the backdrop's close handler firing when the image itself is
+              tapped, so panning/zooming a photo doesn't dismiss it. */}
+          <Image
+            src={lightbox}
+            alt="Attachment"
+            width={1600}
+            height={1600}
+            unoptimized
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-full w-auto max-w-full rounded-lg object-contain"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -355,6 +395,7 @@ function MessageBubble({
   onDelete,
   onTogglePin,
   onToggleReaction,
+  onOpenImage,
 }: {
   message: ChatMessageView;
   isOwn: boolean;
@@ -363,6 +404,7 @@ function MessageBubble({
   onDelete: () => void;
   onTogglePin: () => void;
   onToggleReaction: (emoji: string) => void;
+  onOpenImage: (url: string) => void;
 }) {
   const [showPicker, setShowPicker] = useState(false);
 
@@ -407,7 +449,12 @@ function MessageBubble({
             </p>
           )}
           {message.attachmentUrl && (
-            <a href={message.attachmentUrl} target="_blank" rel="noreferrer" className="mb-1.5 block">
+            <button
+              type="button"
+              onClick={() => onOpenImage(message.attachmentUrl!)}
+              className="mb-1.5 block cursor-zoom-in"
+              aria-label="Open image"
+            >
               <Image
                 src={message.attachmentUrl}
                 alt="Attachment"
@@ -416,7 +463,7 @@ function MessageBubble({
                 unoptimized
                 className="max-h-64 w-auto rounded-lg object-contain"
               />
-            </a>
+            </button>
           )}
           {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
           <p className={cn("mt-0.5 flex items-center gap-1 text-[10px]", isOwn ? "text-primary-foreground/60" : "text-muted-foreground")}>
