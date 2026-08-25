@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut, Bell } from "lucide-react";
+import { LogOut, Bell, ShieldCheck, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/brand-mark";
@@ -56,6 +56,17 @@ export function AppShell({ variant, userName, isAdmin, unreadCount, children }: 
             );
           })}
         </nav>
+        {isAdmin && (
+          <div className="px-3 pb-1">
+            <Link
+              href={variant === "admin" ? "/dashboard" : "/admin/dashboard"}
+              className="flex items-center gap-3 rounded-full border border-sidebar-border px-4 py-2.5 text-sm font-semibold text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              {variant === "admin" ? <ArrowLeftRight className="size-4.5" /> : <ShieldCheck className="size-4.5" />}
+              {variant === "admin" ? "Switch to member view" : "Admin panel"}
+            </Link>
+          </div>
+        )}
         <div className="m-3 flex items-center justify-between rounded-2xl bg-sidebar-accent/60 p-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--fpl-green)] text-xs font-bold text-[var(--fpl-purple)]">
@@ -85,6 +96,15 @@ export function AppShell({ variant, userName, isAdmin, unreadCount, children }: 
             <span className="text-sm font-bold tracking-tight">Money League</span>
           </div>
           <div className="flex items-center gap-1">
+            {isAdmin && (
+              <Link
+                href={variant === "admin" ? "/dashboard" : "/admin/dashboard"}
+                aria-label={variant === "admin" ? "Switch to member view" : "Admin panel"}
+                className="flex size-8 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                {variant === "admin" ? <ArrowLeftRight className="size-4.5" /> : <ShieldCheck className="size-4.5" />}
+              </Link>
+            )}
             <NotificationBell unreadCount={unreadCount} onDark />
             <Button
               variant="ghost"
