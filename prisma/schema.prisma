@@ -88,6 +88,8 @@ model User {
   chatMessages      ChatMessage[]  @relation("MessageSender")
   deletedMessages   ChatMessage[]  @relation("MessageDeleter")
   chatReactions     ChatMessageReaction[]
+  passwordResets       PasswordResetToken[] @relation("PasswordResetUser")
+  passwordResetsIssued PasswordResetToken[] @relation("PasswordResetIssuer")
   announcements     Announcement[]
   notifications     Notification[]
   proposals         Proposal[]
@@ -116,6 +118,24 @@ model Invite {
 
   @@index([email])
   @@index([status])
+}
+
+// Admin-issued password resets, for members who can't use the self-serve
+// FPL-Entry-ID flow (typically because they never linked a team). There's no
+// email delivery in this app, so the admin generates a one-time link and hands
+// it to the member directly, the same way invites are shared.
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  userId     String
+  user       User      @relation("PasswordResetUser", fields: [userId], references: [id], onDelete: Cascade)
+  issuedById String
+  issuedBy   User      @relation("PasswordResetIssuer", fields: [issuedById], references: [id])
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model FPLAccount {

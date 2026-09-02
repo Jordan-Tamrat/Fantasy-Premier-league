@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/services/auditService";
 import { createInvite, revokeInvite } from "@/services/inviteService";
+import { createPasswordResetLink } from "@/services/passwordResetService";
 import { createInviteSchema } from "@/lib/validations/invite.schema";
 
 export async function setMemberRoleAction(userId: string, role: "ADMIN" | "MEMBER") {
@@ -35,6 +36,17 @@ export async function setMemberStatusAction(userId: string, status: "ACTIVE" | "
     newValue: { status },
   });
   revalidatePath("/admin/members");
+}
+
+/**
+ * Fallback for members who can't self-reset (no linked FPL team). Returns the
+ * one-time link for the admin to copy and send — there's no email delivery.
+ */
+export async function createPasswordResetLinkAction(userId: string): Promise<string> {
+  const admin = await requireAdmin();
+  const { token } = await createPasswordResetLink(userId, { userId: admin.id });
+  revalidatePath("/admin/members");
+  return `/reset-password/${token}`;
 }
 
 export async function createInviteAction(_prevState: string | undefined, formData: FormData) {

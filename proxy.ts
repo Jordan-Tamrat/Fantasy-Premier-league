@@ -8,7 +8,14 @@ export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
 
-const PUBLIC_PATH_PREFIXES = ["/login", "/invite/", "/api/auth", "/api/cron"];
+const PUBLIC_PATH_PREFIXES = [
+  "/login",
+  "/forgot-password",
+  "/reset-password/",
+  "/invite/",
+  "/api/auth",
+  "/api/cron",
+];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;

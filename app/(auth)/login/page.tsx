@@ -1,12 +1,24 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, Suspense } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction } from "./actions";
+
+function ResetSuccessBanner() {
+  const justReset = useSearchParams().get("reset") === "1";
+  if (!justReset) return null;
+  return (
+    <p className="mb-4 rounded-lg bg-[var(--fpl-green)]/15 px-3 py-2 text-sm font-medium">
+      Password updated — sign in with your new password.
+    </p>
+  );
+}
 
 export default function LoginPage() {
   const [error, formAction, isPending] = useActionState(loginAction, undefined);
@@ -19,6 +31,12 @@ export default function LoginPage() {
           <h2 className="text-lg font-bold tracking-tight">Welcome back</h2>
           <p className="text-sm text-muted-foreground">Sign in to your league account</p>
         </div>
+
+        {/* Reading search params opts a route out of prerendering unless it's
+            inside a Suspense boundary, so the banner is isolated here. */}
+        <Suspense fallback={null}>
+          <ResetSuccessBanner />
+        </Suspense>
         <form action={formAction} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -60,6 +78,12 @@ export default function LoginPage() {
             )}
           </Button>
         </form>
+
+        <p className="mt-4 text-center text-sm text-muted-foreground">
+          <Link href="/forgot-password" className="font-semibold text-primary hover:underline">
+            Forgot your password?
+          </Link>
+        </p>
       </CardContent>
     </Card>
   );
