@@ -40,9 +40,9 @@ export async function createDispute(
     admins.map((a) => a.id),
     {
       type: "DISPUTE_UPDATE",
-      title: "New dispute raised",
+      title: "New complaint raised",
       body: input.title,
-      href: "/admin/disputes",
+      href: "/admin/complaints",
     },
   );
 
@@ -80,9 +80,9 @@ export async function respondToDispute(
 
   await notifyUsers(prisma, [existing.authorId], {
     type: "DISPUTE_UPDATE",
-    title: `Your dispute was updated: ${input.status.replace("_", " ").toLowerCase()}`,
+    title: `Your complaint was updated: ${input.status.replace("_", " ").toLowerCase()}`,
     body: input.adminResponse,
-    href: "/disputes",
+    href: "/complaints",
   });
 
   return updated;

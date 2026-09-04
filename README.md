@@ -7,7 +7,7 @@ Built for one admin and ~20–25 members. Optimised for correctness (real money)
 ## Features
 
 - **Money loop** — invite-only accounts, full Game Week lifecycle, payment verification, a custom prize engine with exact tie-splitting, FPL score syncing, prize payouts, leaderboard and history.
-- **League** — real-time chat (images, replies, reactions, pins), announcements, notifications, rules, rule proposals with one-member-one-vote, and disputes.
+- **League** — real-time chat (images, replies, reactions, pins), announcements, notifications, rules, rule proposals with one-member-one-vote, and complaints.
 - **Admin** — payment/prize controls, member and invite management, FPL sync, league settings, and a full audit log.
 
 ## Tech stack

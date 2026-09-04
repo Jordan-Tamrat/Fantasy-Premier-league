@@ -12,16 +12,16 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "des
   REJECTED: "destructive",
 };
 
-export default async function AdminDisputesPage() {
+export default async function AdminComplaintsPage() {
   const disputes = await listAllDisputes();
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-8">
-      <h1 className="text-2xl font-bold tracking-tight">Disputes</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Complaints</h1>
 
       {disputes.length === 0 ? (
         <Card className="border-dashed">
-          <CardContent className="py-12 text-center text-muted-foreground">No disputes raised.</CardContent>
+          <CardContent className="py-12 text-center text-muted-foreground">No complaints raised.</CardContent>
         </Card>
       ) : (
         <div className="space-y-3">

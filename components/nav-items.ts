@@ -16,6 +16,7 @@ import {
   Flag,
   Megaphone,
   Medal,
+  ListOrdered,
 } from "lucide-react";
 
 export interface NavItem {
@@ -31,12 +32,13 @@ export const MEMBER_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/gameweeks", label: "Game Weeks", icon: Trophy },
   { href: "/leaderboard", label: "Leaderboard", icon: Medal },
+  { href: "/fpl-league", label: "FPL League", icon: ListOrdered },
   { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/rules", label: "Rules", icon: ScrollText },
   { href: "/proposals", label: "Proposals", icon: Vote },
   { href: "/history", label: "History", icon: History },
-  { href: "/disputes", label: "Disputes", icon: Flag },
+  { href: "/complaints", label: "Complaints", icon: Flag },
   { href: "/profile", label: "Profile", icon: User },
 ];
 
@@ -66,11 +68,12 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/audit-log", label: "Audit Log", icon: ClipboardList },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/leaderboard", label: "Leaderboard", icon: Medal },
+  { href: "/fpl-league", label: "FPL League", icon: ListOrdered },
   { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
   { href: "/admin/rules", label: "Rules", icon: ScrollText },
   { href: "/proposals", label: "Proposals", icon: Vote },
-  { href: "/admin/disputes", label: "Disputes", icon: Flag },
+  { href: "/admin/complaints", label: "Complaints", icon: Flag },
   { href: "/history", label: "History", icon: History },
   { href: "/profile", label: "Profile", icon: User },
 ];

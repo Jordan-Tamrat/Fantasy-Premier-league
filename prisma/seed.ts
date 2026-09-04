@@ -174,7 +174,7 @@ async function main() {
       ["Prize Money", "The prize pool is the total of all verified entry fees. The admin sets the amount for each prize position, and the total can never exceed the pool."],
       ["Tie-Breaking", "Players who tie share every prize position their tie covers, split equally. Two players tied for 1st split the 1st and 2nd prizes, and the next player is ranked 3rd — there is no 2nd place."],
       ["Rule Changes", "Any member can propose a rule change. Every active member gets one vote, and a simple majority passes it."],
-      ["Disputes", "If something looks wrong, raise a dispute. The admin must respond, and every action is recorded in the audit log."],
+      ["Complaints", "If something looks wrong, raise a complaint. The admin must respond, and every action is recorded in the audit log."],
     ];
     for (const [index, [title, body]] of rules.entries()) {
       await prisma.ruleSection.create({ data: { title, body, order: index + 1 } });

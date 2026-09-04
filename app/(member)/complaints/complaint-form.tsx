@@ -19,14 +19,14 @@ const CATEGORIES = [
   ["OTHER", "Other"],
 ] as const;
 
-export function NewDisputeForm() {
+export function NewComplaintForm() {
   const [open, setOpen] = useState(false);
   const [error, formAction, isPending] = useActionState(createDisputeAction, undefined);
 
   if (!open) {
     return (
       <Button onClick={() => setOpen(true)} className="w-full">
-        <Plus className="size-4" /> Raise a dispute
+        <Plus className="size-4" /> Raise a complaint
       </Button>
     );
   }
@@ -61,7 +61,7 @@ export function NewDisputeForm() {
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex gap-2">
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Submitting…" : "Submit dispute"}
+              {isPending ? "Submitting…" : "Submit complaint"}
             </Button>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

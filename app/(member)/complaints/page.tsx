@@ -3,7 +3,7 @@ import { listDisputesForUser } from "@/services/disputeService";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/datetime";
-import { NewDisputeForm } from "./dispute-form";
+import { NewComplaintForm } from "./complaint-form";
 
 export const DISPUTE_STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   OPEN: "default",
@@ -12,20 +12,20 @@ export const DISPUTE_STATUS_VARIANTS: Record<string, "default" | "secondary" | "
   REJECTED: "destructive",
 };
 
-export default async function DisputesPage() {
+export default async function ComplaintsPage() {
   const user = await requireUser();
   const disputes = await listDisputesForUser(user.id);
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4 md:p-8">
-      <h1 className="text-2xl font-bold tracking-tight">Disputes</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Complaints</h1>
 
-      <NewDisputeForm />
+      <NewComplaintForm />
 
       {disputes.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center text-muted-foreground">
-            You haven&apos;t raised any disputes.
+            You haven&apos;t raised any complaints.
           </CardContent>
         </Card>
       ) : (

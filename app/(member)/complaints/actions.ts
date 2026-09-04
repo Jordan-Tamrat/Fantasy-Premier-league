@@ -17,8 +17,8 @@ export async function createDisputeAction(_prevState: string | undefined, formDa
   try {
     await createDispute(parsed.data, { userId: user.id });
   } catch (error) {
-    return error instanceof Error ? error.message : "Could not raise this dispute";
+    return error instanceof Error ? error.message : "Could not raise this complaint";
   }
 
-  revalidatePath("/disputes");
+  revalidatePath("/complaints");
 }

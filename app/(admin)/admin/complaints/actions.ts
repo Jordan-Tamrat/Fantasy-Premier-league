@@ -25,8 +25,8 @@ export async function respondToDisputeAction(
       { userId: admin.id },
     );
   } catch (error) {
-    return error instanceof Error ? error.message : "Could not update this dispute";
+    return error instanceof Error ? error.message : "Could not update this complaint";
   }
 
-  revalidatePath("/admin/disputes");
+  revalidatePath("/admin/complaints");
 }
