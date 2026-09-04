@@ -61,6 +61,11 @@ export async function lockGameWeek(gameWeekId: string, actor: LockGameWeekActor)
       );
     }
 
+    // skipDuplicates so a half-finished earlier lock attempt can't wedge this
+    // permanently: (gameWeekId, userId) is unique, so a single leftover
+    // participant row would otherwise make every retry fail on the whole
+    // batch. Existing rows are kept as-is — they carry the same paymentId and
+    // entryFeePaidSnapshot this insert would have written.
     await tx.gameWeekParticipant.createMany({
       data: verifiedPayments.map((payment) => ({
         gameWeekId,
@@ -68,6 +73,7 @@ export async function lockGameWeek(gameWeekId: string, actor: LockGameWeekActor)
         paymentId: payment.id,
         entryFeePaidSnapshot: payment.amount,
       })),
+      skipDuplicates: true,
     });
 
     const locked = await tx.gameWeek.update({
