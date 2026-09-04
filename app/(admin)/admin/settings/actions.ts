@@ -12,6 +12,7 @@ export async function updateLeagueSettingsAction(_prevState: string | undefined,
   if (!parsed.success) return parsed.error.issues[0]?.message ?? "Invalid input";
 
   const before = await prisma.leagueSettings.findUnique({ where: { id: "default" } });
+  const fplLeagueId = typeof parsed.data.fplLeagueId === "number" ? parsed.data.fplLeagueId : null;
 
   await prisma.leagueSettings.upsert({
     where: { id: "default" },
@@ -25,6 +26,7 @@ export async function updateLeagueSettingsAction(_prevState: string | undefined,
       leagueTelebirrNumber: parsed.data.leagueTelebirrNumber || null,
       leagueCbeAccountNumber: parsed.data.leagueCbeAccountNumber || null,
       leagueAccountName: parsed.data.leagueAccountName || null,
+      fplLeagueId,
     },
     update: {
       leagueName: parsed.data.leagueName,
@@ -35,6 +37,7 @@ export async function updateLeagueSettingsAction(_prevState: string | undefined,
       leagueTelebirrNumber: parsed.data.leagueTelebirrNumber || null,
       leagueCbeAccountNumber: parsed.data.leagueCbeAccountNumber || null,
       leagueAccountName: parsed.data.leagueAccountName || null,
+      fplLeagueId,
     },
   });
 

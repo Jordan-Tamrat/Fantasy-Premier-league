@@ -1,6 +1,7 @@
 import { fplFetch, FPLApiError } from "./client";
 import type {
   FPLBootstrapData,
+  FPLClassicLeague,
   FPLEvent,
   FPLFixture,
   FPLLiveEvent,
@@ -75,8 +76,56 @@ async function getManagerGameWeekPoints(entryId: number, eventId: number): Promi
   return picks.entry_history.points;
 }
 
+/**
+ * Standings for a classic league. FPL paginates at 50 entries per page, so
+ * this walks pages until `has_next` is false — a ~25-person league is one
+ * request, but this stays correct if the league grows.
+ */
+// FPL takes the game offline while a new Game Week rolls over (the leagues
+// endpoint 503s even though bootstrap-static keeps serving), so standings are
+// cached briefly and the last good response is kept as a fallback — during
+// that window members see slightly stale standings instead of an error.
+const LEAGUE_CACHE_TTL_MS = 120_000;
+const leagueCache = new Map<number, { data: FPLClassicLeague; fetchedAt: number }>();
+
+async function getClassicLeagueStandings(leagueId: number): Promise<FPLClassicLeague> {
+  const cached = leagueCache.get(leagueId);
+  if (cached && Date.now() - cached.fetchedAt < LEAGUE_CACHE_TTL_MS) return cached.data;
+
+  try {
+    const fresh = await fetchClassicLeagueStandings(leagueId);
+    leagueCache.set(leagueId, { data: fresh, fetchedAt: Date.now() });
+    return fresh;
+  } catch (error) {
+    // Serving slightly stale standings beats showing an error page when FPL
+    // is throttling us.
+    if (cached) return cached.data;
+    throw error;
+  }
+}
+
+async function fetchClassicLeagueStandings(leagueId: number): Promise<FPLClassicLeague> {
+  const first = await fplFetch<FPLClassicLeague>(`/leagues-classic/${leagueId}/standings/`);
+  if (!first.standings.has_next) return first;
+
+  const results = [...first.standings.results];
+  let page = first.standings.page;
+  let hasNext: boolean = first.standings.has_next;
+  // Bounded so a malformed response can never loop forever.
+  while (hasNext && page < 20) {
+    page += 1;
+    const next = await fplFetch<FPLClassicLeague>(
+      `/leagues-classic/${leagueId}/standings/?page_standings=${page}`,
+    );
+    results.push(...next.standings.results);
+    hasNext = next.standings.has_next;
+  }
+  return { league: first.league, standings: { has_next: hasNext, page, results } };
+}
+
 export const FPLService = {
   getBootstrapData,
+  getClassicLeagueStandings,
   getCurrentEvent,
   getNextEvent,
   getEventById,

@@ -17,6 +17,7 @@ export default async function AdminSettingsPage() {
         leagueAccountName: settings.leagueAccountName,
         leagueTelebirrNumber: settings.leagueTelebirrNumber,
         leagueCbeAccountNumber: settings.leagueCbeAccountNumber,
+        fplLeagueId: settings.fplLeagueId,
       }
     : null;
 

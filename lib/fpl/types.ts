@@ -88,6 +88,28 @@ export interface FPLFixture {
   team_a_score: number | null;
 }
 
+/** One row of a classic league's standings table. */
+export interface FPLLeagueStanding {
+  entry: number;
+  entry_name: string;
+  player_name: string;
+  rank: number;
+  last_rank: number;
+  /** Points scored in the current Game Week. */
+  event_total: number;
+  /** Season total points. */
+  total: number;
+}
+
+export interface FPLClassicLeague {
+  league: { id: number; name: string };
+  standings: {
+    has_next: boolean;
+    page: number;
+    results: FPLLeagueStanding[];
+  };
+}
+
 export interface FPLTransfer {
   element_in: number;
   element_out: number;

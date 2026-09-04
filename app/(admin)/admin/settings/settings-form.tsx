@@ -18,6 +18,7 @@ interface SettingsView {
   leagueAccountName: string | null;
   leagueTelebirrNumber: string | null;
   leagueCbeAccountNumber: string | null;
+  fplLeagueId: number | null;
 }
 
 export function SettingsForm({ settings }: { settings: SettingsView | null }) {
@@ -49,6 +50,12 @@ export function SettingsForm({ settings }: { settings: SettingsView | null }) {
         <Field id="leagueAccountName" label="Payment account name" defaultValue={settings?.leagueAccountName ?? ""} />
         <Field id="leagueTelebirrNumber" label="Telebirr number" defaultValue={settings?.leagueTelebirrNumber ?? ""} />
         <Field id="leagueCbeAccountNumber" label="CBE account number" defaultValue={settings?.leagueCbeAccountNumber ?? ""} />
+        <Field
+          id="fplLeagueId"
+          label="FPL classic league ID"
+          type="number"
+          defaultValue={settings?.fplLeagueId ?? ""}
+        />
       </div>
       {message && <p className="text-sm text-muted-foreground">{message}</p>}
       <Button type="submit" disabled={isPending}>

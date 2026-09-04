@@ -161,6 +161,10 @@ model LeagueSettings {
   leagueTelebirrNumber              String?
   leagueCbeAccountNumber            String?
   leagueAccountName                 String?
+  // The classic league ID on the official FPL site, used to show the live
+  // standings of everyone in the group (including people who haven't joined
+  // this app). Nullable so the app works before it's configured.
+  fplLeagueId                       Int?
   updatedAt                         DateTime @updatedAt
 }
 
